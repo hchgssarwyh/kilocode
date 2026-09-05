@@ -160,7 +160,12 @@ export namespace AutoModeCLI {
     }
   }
 
-  export async function start(input: { sessionID: string; root: string; dir?: string }) {
+  export async function start(input: {
+    sessionID: string
+    root: string
+    dir?: string
+    audit?: (event: AuditEvent, line: string | undefined) => void
+  }) {
     preflight()
     const dir = path.resolve(input.dir ?? path.join(Global.Path.state, "auto-mode"))
     const rel = path.relative(path.resolve(input.root), dir)
@@ -169,7 +174,21 @@ export namespace AutoModeCLI {
     }
     const handle = await create(input)
     try {
-      Gateway.activate({ sessionID: SessionID.make(input.sessionID), root: input.root, record: handle.record })
+      // Deliver audit events through a direct sink (the same path the demo and tests use) instead of
+      // the event bus: the bus is not reliably available inside tool execution, and a failed
+      // publish used to fail the whole action.
+      const sink = input.audit
+      Gateway.activate({
+        sessionID: SessionID.make(input.sessionID),
+        root: input.root,
+        record: handle.record,
+        audit: sink
+          ? async (value) => {
+              const event = Audit.redact(value)
+              sink(event, handle.render(event))
+            }
+          : undefined,
+      })
       return handle
     } catch (error) {
       await handle.close()

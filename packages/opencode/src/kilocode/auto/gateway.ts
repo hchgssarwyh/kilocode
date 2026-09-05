@@ -135,7 +135,14 @@ export namespace Gateway {
       const publish = state.audit ?? ((event: Audit.Input) => bridge.promise(Audit.publish(event)))
       const send = async (event: Audit.Input) => {
         await state.record?.(event)
-        return publish(event)
+        // kilocode_change start - bus fan-out is observability only: the JSONL record above is the audit
+        // of record and stays fatal; a bus failure must not turn every tool call into an error.
+        try {
+          return await publish(event)
+        } catch {
+          return undefined
+        }
+        // kilocode_change end
       }
       const emit = (event: Audit.Input) =>
         Effect.tryPromise({

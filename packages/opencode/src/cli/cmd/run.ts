@@ -1082,7 +1082,14 @@ export const RunCommand = effectCmd({
         await share(client, sessionID)
 
         const mode = args["auto-mode"]
-          ? await AutoModeCLI.start({ sessionID, root: cwd }).catch((error) =>
+          ? await AutoModeCLI.start({
+              sessionID,
+              root: cwd,
+              audit: (event, line) => {
+                if (args.format === "json") emit("auto_mode", { event })
+                else if (line) UI.println(line)
+              },
+            }).catch((error) =>
               die(`Auto Mode audit initialization failed: ${error instanceof Error ? error.message : String(error)}`),
             )
           : undefined // kilocode_change
