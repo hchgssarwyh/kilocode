@@ -149,6 +149,14 @@ kilo run --auto "run tests and fix any failures"
 
 `--auto` disables all permission prompts and lets the agent execute any action without confirmation. Only use it in trusted environments.
 
+For isolated local execution, use `--auto-mode` instead:
+
+```bash
+kilo run --auto-mode "run tests and fix any failures"
+```
+
+`--auto-mode` is a separate safety capability. It runs supported mutations in a shadow workspace, applies them only after policy checks, blocks unsupported tools, disables network access for shell trials, and writes a redacted audit log. Combining it with `--auto` does not auto-approve Auto Mode policy reviews. Auto Mode currently supports local, non-interactive runs on macOS and Linux.
+
 ### Documentation
 
 For configuration and everything else, [head over to the docs](https://kilo.ai/docs).

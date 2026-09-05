@@ -257,6 +257,11 @@ export const RunCommand = effectCmd({
         describe: "auto-approve permissions that are not explicitly denied (dangerous!)",
         default: false,
       })
+      .option("auto-mode", {
+        type: "boolean",
+        describe: "run local tools through the isolated Auto Mode safety gateway",
+        default: false,
+      }) // kilocode_change
       .option("yolo", {
         type: "boolean",
         hidden: true,
@@ -287,6 +292,7 @@ export const RunCommand = effectCmd({
     const { KiloRunDrain } = yield* Effect.promise(() => import("@/kilocode/cli/run-drain"))
     const { KiloHeadless } = yield* Effect.promise(() => import("@/kilocode/permission/headless"))
     const { KiloRun, KiloRunDaemon } = yield* Effect.promise(() => import("@/kilocode/cli/cmd/run"))
+    const { AutoModeCLI } = yield* Effect.promise(() => import("@/kilocode/cli/auto-mode")) // kilocode_change
     // kilocode_change end
     const agentSvc = yield* Agent.Service
     const flags = yield* RuntimeFlags.Service
@@ -325,6 +331,18 @@ export const RunCommand = effectCmd({
       if (interactive && args.format === "json") {
         die("--mini cannot be used with --format json")
       }
+
+      // kilocode_change start - Auto Mode activation is currently local and headless
+      if (args["auto-mode"] && interactive) die("--auto-mode does not support interactive runs")
+      if (args["auto-mode"] && args.attach) die("--auto-mode does not support --attach")
+      if (args["auto-mode"]) {
+        try {
+          AutoModeCLI.preflight()
+        } catch (error) {
+          die(`Auto Mode unavailable: ${error instanceof Error ? error.message : String(error)}`)
+        }
+      }
+      // kilocode_change end
 
       if (args["replay-limit"] !== undefined && !interactive) {
         die("--replay-limit requires --mini")
@@ -805,6 +823,18 @@ export const RunCommand = effectCmd({
             if (drain.event(event)) break // kilocode_change
             // kilocode_change end
 
+            // kilocode_change start - render Auto Mode audit without mixing human text into JSON output
+            const audit = AutoModeCLI.parse(event, sessionID)
+            if (audit) {
+              if (args.format === "json") emit("auto_mode", { event: audit })
+              else {
+                const line = mode?.render(audit)
+                if (line) UI.println(line)
+              }
+              continue
+            }
+            // kilocode_change end
+
             if (
               event.type === "message.updated" &&
               event.properties.sessionID === sessionID &&
@@ -919,6 +949,29 @@ export const RunCommand = effectCmd({
             if (event.type === "permission.asked") {
               const permission = event.properties
               if (!KiloRunAuto.allowed(tracked, permission.sessionID)) continue // kilocode_change
+              // kilocode_change start - policy review always requires a human; approved trials may satisfy tool asks
+              const autoPermission = AutoModeCLI.permission(permission, args["auto-mode"])
+              if (autoPermission === "review") {
+                const review = {
+                  ruleCodes: permission.metadata?.["ruleCodes"],
+                  reply: "reject",
+                }
+                if (args.format === "json") emit("auto_mode_review", { review })
+                else {
+                  UI.println(
+                    UI.Style.TEXT_WARNING_BOLD + "!",
+                    UI.Style.TEXT_NORMAL +
+                      `Auto Mode review required (${String(permission.metadata?.["ruleCodes"] ?? "policy")}); rejecting in headless run`,
+                  )
+                }
+                await client.permission.reply({ requestID: permission.id, reply: "reject" })
+                continue
+              }
+              if (autoPermission === "trial") {
+                await client.permission.reply({ requestID: permission.id, reply: "once" })
+                continue
+              }
+              // kilocode_change end
               // kilocode_change start - skill shell batches need an interactive human decision. The server ignores
               // non-interactive approvals, so headless runs must reject explicitly rather than leave them pending.
               if (permission.metadata?.["skillShell"] === true || permission.metadata?.["sandboxEscalation"] === true) {
@@ -1028,60 +1081,75 @@ export const RunCommand = effectCmd({
 
         await share(client, sessionID)
 
+        const mode = args["auto-mode"]
+          ? await AutoModeCLI.start({ sessionID, root: cwd }).catch((error) =>
+              die(`Auto Mode audit initialization failed: ${error instanceof Error ? error.message : String(error)}`),
+            )
+          : undefined // kilocode_change
+
         // kilocode_change start
         if (!interactive) {
-          const events = await client.event.subscribe(undefined, {
-            signal: drain.signal,
-            sseMaxRetryAttempts: 1,
-            onSseError: (error) => drain.end(error),
-          })
-          const completed = loop(client, events).then(
-            (error) => {
-              drain.end()
-              return error
-            },
-            (error) => {
-              drain.end(error)
-              return undefined
-            },
-          )
           try {
-            await drain.race(KiloRunDrain.check(client, drain.signal))
-            await drain.ready()
-            const result = await drain.race(
-              builtin
-                ? KiloRun.runBuiltin(client, sessionID, builtin, args.model, sess.model, cwd)
-                : args.command
-                  ? client.session.command({
-                      sessionID,
-                      agent,
-                      model: args.model,
-                      command: args.command,
-                      arguments: message,
-                      variant: args.variant,
-                    })
-                  : client.session.prompt({
-                      sessionID,
-                      agent,
-                      model: pick(args.model),
-                      variant: args.variant,
-                      parts: [...files, { type: "text", text: message }],
-                    }),
+            const events = await client.event.subscribe(undefined, {
+              signal: drain.signal,
+              sseMaxRetryAttempts: 1,
+              onSseError: (error) => drain.end(error),
+            })
+            const completed = loop(client, events).then(
+              (error) => {
+                drain.end()
+                return error
+              },
+              (error) => {
+                drain.end(error)
+                return undefined
+              },
             )
-            if (result.error) {
-              if (!emit("error", { error: result.error })) UI.error(formatRunError(result.error))
+            try {
+              await drain.race(KiloRunDrain.check(client, drain.signal))
+              await drain.ready()
+              const result = await drain.race(
+                builtin
+                  ? KiloRun.runBuiltin(client, sessionID, builtin, args.model, sess.model, cwd)
+                  : args.command
+                    ? client.session.command({
+                        sessionID,
+                        agent,
+                        model: args.model,
+                        command: args.command,
+                        arguments: message,
+                        variant: args.variant,
+                      })
+                    : client.session.prompt({
+                        sessionID,
+                        agent,
+                        model: pick(args.model),
+                        variant: args.variant,
+                        parts: [...files, { type: "text", text: message }],
+                      }),
+              )
+              if (result.error) {
+                if (!emit("error", { error: result.error })) UI.error(formatRunError(result.error))
+                process.exitCode = 1
+              }
+              await drain.wait(client, cwd)
+              if (await completed) process.exitCode = 1
+            } catch (error) {
+              const text = error instanceof Error ? error.message : String(error)
+              if (!emit("error", { error: text })) UI.error(text)
               process.exitCode = 1
+            } finally {
+              drain.close()
+              await completed
+              await KiloRunDrain.flush()
             }
-            await drain.wait(client, cwd)
-            if (await completed) process.exitCode = 1
-          } catch (error) {
-            const text = error instanceof Error ? error.message : String(error)
-            if (!emit("error", { error: text })) UI.error(text)
-            process.exitCode = 1
           } finally {
-            drain.close()
-            await completed
-            await KiloRunDrain.flush()
+            if (mode) {
+              await AutoModeCLI.stop(sessionID, mode)
+              const summary = mode.summary()
+              if (args.format === "json") emit("auto_mode_summary", { summary })
+              else AutoModeCLI.summary(summary).forEach((line) => UI.println(line))
+            }
           }
           return
         }
@@ -1156,7 +1224,7 @@ export const RunCommand = effectCmd({
         return await execute(sdk)
       }
 
-      if (await KiloRunDaemon.attach({ directory, execute })) return // kilocode_change
+      if (!args["auto-mode"] && (await KiloRunDaemon.attach({ directory, execute }))) return // kilocode_change
 
       const fetchFn = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const { Server } = await import("@/server/server")
@@ -1224,6 +1292,8 @@ export async function runMini(input: MiniCommandInput) {
     "replay-limit": input.replayLimit,
     replayLimit: input.replayLimit,
     auto: false,
+    "auto-mode": false, // kilocode_change
+    autoMode: false, // kilocode_change
     yolo: false,
     "dangerously-skip-permissions": false,
     dangerouslySkipPermissions: false,

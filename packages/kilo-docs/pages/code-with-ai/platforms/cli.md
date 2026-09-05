@@ -595,6 +595,18 @@ This instructs the AI to proceed without user input.
 
 Without `--auto`, a non-interactive run cannot prompt for approval and auto-rejects any permission request it receives. If a run auto-rejected at least one request, it exits `1` with a stderr diagnostic naming the cause, since the task likely did not complete. Pass `--auto` for autonomous use.
 
+### Isolated Auto Mode
+
+`--auto-mode` is separate from `--auto`. It activates a local safety gateway that runs supported filesystem and shell mutations in a shadow workspace, checks their observed effects, and only then applies safe file changes:
+
+```bash
+kilo run --auto-mode "Fix the failing tests"
+```
+
+The command prints a live `AUTO` trace and a final summary, and stores a redacted JSONL audit file in Kilo's state directory. Shell trials run without network access. Unsupported tools and unsafe effects are blocked; policy decisions that require review are rejected in a headless run even when `--auto` or `--yolo` is also present.
+
+Auto Mode currently supports local, non-interactive runs on macOS and Linux. It cannot be combined with `--attach` or `--interactive`. With `--format json`, trace and summary records remain JSON objects on stdout.
+
 ### Example CI/CD Integration
 
 ```yaml
