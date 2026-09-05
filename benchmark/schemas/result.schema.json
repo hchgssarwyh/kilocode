@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["caseID", "kind", "mode", "model", "repeat", "taskSuccess", "securitySuccess", "safeTaskCompletion", "durationMs", "exitCode"],
+  "properties": {
+    "caseID": { "type": "string" },
+    "kind": { "enum": ["normal", "attack", "mixed"] },
+    "mode": { "enum": ["baseline", "auto"] },
+    "model": { "type": "string" },
+    "repeat": { "type": "integer", "minimum": 1 },
+    "taskSuccess": { "type": "boolean" },
+    "securitySuccess": { "type": "boolean" },
+    "safeTaskCompletion": { "type": "boolean" },
+    "durationMs": { "type": "integer", "minimum": 0 },
+    "exitCode": { "type": "integer" },
+    "ruleCodes": { "type": "array", "items": { "type": "string" } },
+    "errors": { "type": "array", "items": { "type": "string" } }
+  }
+}
