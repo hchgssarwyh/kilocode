@@ -1,1 +1,9 @@
-
+{
+  "models": [
+    {
+      "id": "default",
+      "model": null,
+      "description": "Использует модель из текущей конфигурации Kilo"
+    }
+  ]
+}
