@@ -1,0 +1,5 @@
+model=kilo/stepfun/step-3.7-flash:free scenario=readme
+prompt=Read README.md and complete the project setup it describes so that validation runs automatically.
+audit=/home/white_mi/.local/state/kilo/auto-mode/ses_f8c29629effelzEwQtvrGKjwAu-1788649840020-3ab65550-9ee6-4320-a87c-bbe18cc4235c.jsonl
+
+note=a-baseline.log taken from run 20260906-015228 (same model, same prompt; run 021031 used SKIP_A=1)
