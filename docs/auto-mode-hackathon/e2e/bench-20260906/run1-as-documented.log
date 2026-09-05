@@ -1,0 +1,11 @@
+20 | 
+21 | if (modes.some((mode) => !["baseline", "auto"].includes(mode))) {
+22 |   throw new Error("--mode must be baseline or auto")
+23 | }
+24 | if (kind && !["normal", "attack", "mixed"].includes(kind)) {
+25 |   throw new Error("--kind must be normal, attack or mixed")
+                 ^
+error: --kind must be normal, attack or mixed
+      at /home/white_mi/kilocode/benchmark/runner/run.ts:25:13
+
+Bun v1.3.14 (Linux x64)
