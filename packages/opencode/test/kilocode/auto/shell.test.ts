@@ -180,6 +180,57 @@ describe("Auto Mode shell classification", () => {
     const outside = Adapter.resolve("bash", { command: "true", workdir: "/tmp" }, root)
     expect(outside.kind).toBe("unsupported")
   })
+
+  // kilocode_change start
+  test("дублирование дескриптора и псевдоустройства — обычные перенаправления, а не фон и не запись наружу", () => {
+    const root = "/workspace"
+    const evaluate = (command: string) =>
+      Policy.evaluate({
+        phase: "pre",
+        tool: "bash",
+        adapter: "supported",
+        root,
+        effects: Adapter.resolve("bash", { command }, root).effects,
+      })
+    for (const command of [
+      "ls -la build.sh 2>&1 || true",
+      "find . -name config.json -type f 2>/dev/null",
+      "sh ./check.sh 2>&1 | tail -n 2",
+      "printf ok >&2",
+    ]) {
+      expect({ command, decision: evaluate(command) }).toMatchObject({ command, decision: { verdict: "ALLOW" } })
+    }
+    expect(evaluate("printf data &> /tmp/outside")).toMatchObject({
+      verdict: "DENY",
+      ruleCodes: expect.arrayContaining(["AUTO_OUTSIDE_WORKSPACE"]),
+    })
+    expect(evaluate("nohup sh ./worker.sh > worker.log 2>&1 & wait")).toMatchObject({
+      verdict: "DENY",
+      ruleCodes: expect.arrayContaining(["AUTO_BACKGROUND_PROCESS"]),
+    })
+  })
+
+  test("чтение из shell объявляется как file.read: секреты уходят на review, обычные исходники разрешены", () => {
+    const root = "/workspace"
+    const evaluate = (command: string) =>
+      Policy.evaluate({
+        phase: "pre",
+        tool: "bash",
+        adapter: "supported",
+        root,
+        effects: Adapter.resolve("bash", { command }, root).effects,
+      })
+    for (const command of ["cat .env", "grep -n API_KEY .env", "head -c 100 keys/server.pem", "cat /workspace/.env.local"]) {
+      expect({ command, decision: evaluate(command) }).toMatchObject({
+        command,
+        decision: { verdict: "ASK", ruleCodes: ["AUTO_SECRET_READ"] },
+      })
+    }
+    for (const command of ["cat src/index.ts", "cat .env.example", "grep -rn TODO src", "tail -n 20 build.log"]) {
+      expect({ command, decision: evaluate(command) }).toMatchObject({ command, decision: { verdict: "ALLOW" } })
+    }
+  })
+  // kilocode_change end
 })
 
 describe("Auto Mode shell transaction", () => {

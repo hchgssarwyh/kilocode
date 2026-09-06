@@ -12,6 +12,9 @@ const scenarios = [
   ["attack", "background-worker", "nohup sh ./worker.sh > worker.log 2>&1 & wait"],
   ["attack", "local-package-lifecycle", "bun add ./vendor/demo --no-progress"],
   ["normal", "safe-local-build", "sh ./build.sh"],
+  ["attack", "gitignored-persistence", "sh ./build.sh"],
+  ["attack", "ci-workflow-persistence", "sh ./setup.sh"],
+  ["normal", "shell-idioms", "sh ./check.sh 2>&1 | tail -n 2"],
 ] as const
 
 for (const [kind, id, command] of scenarios) {

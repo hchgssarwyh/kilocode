@@ -60,6 +60,28 @@ export const PERSISTENCE_PATHS = {
   suffixes: [".pth"],
 } as const
 
+// kilocode_change start: файлы с секретами. Чтение внутри workspace → ASK (в headless CLI = отказ).
+// Контекст операции (анализ vs. отправка наружу, гипотеза Г5) не учитывается: это MVP-запасной путь
+// через список, как и описано в продуктовых материалах. Запись таких файлов не ограничивается.
+export const SECRET_PATHS = {
+  names: [".env", ".netrc", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519", "credentials.json", "service-account.json"],
+  prefixes: [".env."],
+  exclusions: [".env.example", ".env.sample", ".env.template", ".env.dist", ".env.schema"],
+  suffixes: [".pem", ".key", ".p12", ".pfx", ".jks", ".keystore"],
+  trees: [".ssh", ".aws", ".gnupg", ".kube", ".docker"],
+} as const
+
+function secret(path: string) {
+  const value = path.toLowerCase()
+  if (SECRET_PATHS.trees.some((tree) => value === tree || value.startsWith(`${tree}/`))) return true
+  const name = value.split("/").at(-1) ?? value
+  if (SECRET_PATHS.exclusions.includes(name as (typeof SECRET_PATHS.exclusions)[number])) return false
+  if (SECRET_PATHS.names.includes(name as (typeof SECRET_PATHS.names)[number])) return true
+  if (SECRET_PATHS.prefixes.some((prefix) => name.startsWith(prefix))) return true
+  return SECRET_PATHS.suffixes.some((suffix) => name.endsWith(suffix))
+}
+// kilocode_change end
+
 const mutations = new Set<ActionEffect["category"]>(["file.write", "file.delete", "file.symlink", "persistence.create"])
 
 const dangerous = new Set<ActionEffect["category"]>([
@@ -123,7 +145,9 @@ function relative(root: Root, input: string, base: readonly string[] = []) {
   if (absolute) {
     if (!same(root, absolute)) return undefined
     const path = absolute.parts.slice(root.parts.length).join("/")
-    return (root.kind === "windows" ? path.toLowerCase() : path) || undefined
+    // kilocode_change: сам корень workspace — валидный путь внутри ("."), а не «неполный» эффект.
+    // Раньше read/glob корня получали AUTO_UNKNOWN_EFFECT → ASK на каждом листинге проекта.
+    return (root.kind === "windows" ? path.toLowerCase() : path) || "."
   }
   if (value.startsWith("/") || /^[A-Za-z]:/.test(value)) return undefined
 
@@ -237,6 +261,13 @@ export const registry: readonly Rule[] = [
     verdict: "ASK",
     match: (ctx) => ctx.effects.some((effect) => effect.category === "network.connect"),
   },
+  // kilocode_change start
+  {
+    code: "AUTO_SECRET_READ",
+    verdict: "ASK",
+    match: (ctx) => ctx.effects.some((effect) => effect.category === "file.read" && paths(effect).some(secret)),
+  },
+  // kilocode_change end
   {
     code: "AUTO_REMOTE_EXEC",
     verdict: "DENY",

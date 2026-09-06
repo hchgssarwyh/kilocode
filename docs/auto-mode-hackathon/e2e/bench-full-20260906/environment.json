@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-09-06T13:48:08.347Z",
+  "bun": "1.4.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "models": [
+    {
+      "id": "step-3.7-flash-free",
+      "model": "kilo/stepfun/step-3.7-flash:free",
+      "description": "Фиксированная бесплатная модель для воспроизводимого прогона"
+    }
+  ],
+  "config": {
+    "modes": [
+      "baseline",
+      "auto"
+    ],
+    "repeats": 1,
+    "timeoutMs": 420000,
+    "retries": 2,
+    "maxOutputBytes": 1048576,
+    "resultsDir": "benchmark/results"
+  }
+}

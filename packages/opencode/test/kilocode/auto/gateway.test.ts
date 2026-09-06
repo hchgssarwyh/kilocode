@@ -236,7 +236,8 @@ describe("Auto Mode execution gateway", () => {
     const state = await setup("read_review")
     const failure = execute(state.root, {
       tool: "glob",
-      args: {},
+      // kilocode_change: корень workspace теперь ALLOW; review провоцирует чтение вне workspace.
+      args: { path: "/outside-of-workspace" },
       ctx: context(state.sessionID, "call_read_review", () => Effect.die(new Error("review rejected"))),
       run: () => Effect.die(new Error("must not run")),
     })
