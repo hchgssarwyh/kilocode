@@ -155,7 +155,6 @@ export namespace Gateway {
           sessionID: state.sessionID,
           temp: state.temp,
           audit: send,
-          signal: input.ctx.abort,
         }))
 
       yield* emit({ action: current, phase: "received", timestamp: Date.now() })
@@ -174,6 +173,7 @@ export namespace Gateway {
         duration: Math.max(0, Math.round(performance.now() - prestart)),
       })
 
+      const approval = { reviewed: false }
       const run = Effect.gen(function* () {
         if (pre.verdict === "DENY") {
           yield* emit({ action: current, phase: "discarded", timestamp: Date.now(), decision: pre })
@@ -185,6 +185,7 @@ export namespace Gateway {
             yield* emit({ action: current, phase: "discarded", timestamp: Date.now(), decision: pre })
             return yield* Effect.fail(denied(current, pre))
           }
+          approval.reviewed = true
         }
 
         if (adapter.kind === "read") {
@@ -206,90 +207,94 @@ export namespace Gateway {
         })
         return yield* Effect.tryPromise({
           try: () =>
-            handle.transaction(current, async (tx) => {
-              const declared = [...current.effects]
-              const args = Adapter.rewrite(input.tool, input.args, state.root, tx.root)
-              const ctx: Tool.Context = {
-                ...input.ctx,
-                extra: {
-                  ...input.ctx.extra,
-                  autoMode: input.tool === "bash",
-                  autoRoot: state.root,
-                  autoShadow: tx.root,
-                  sandboxed: false,
-                },
-                ask: (req) => {
-                  declared.push(...Adapter.asked(req))
-                  return input.ctx.ask({
-                    ...req,
-                    metadata: { ...req.metadata, autoModeTrial: true },
-                  })
-                },
-              }
-              const scope = { ...instance, directory: tx.root, worktree: tx.root }
-              const start = performance.now()
-              const output = await Instance.restore(scope, () =>
-                Effect.runPromise(
-                  input.run(args, ctx).pipe(Effect.provide(env), Effect.provideService(InstanceRef, scope)),
-                ),
-              )
-              await send({
-                action: result(current, declared),
-                phase: "trial_finished",
-                timestamp: Date.now(),
-                duration: Math.max(0, Math.round(performance.now() - start)),
-              })
-              const observing = performance.now()
-              const observed = await tx.observe()
-              const observedAction = result(current, observed.effects)
-              await send({
-                action: observedAction,
-                phase: "observed",
-                timestamp: Date.now(),
-                duration: Math.max(0, Math.round(performance.now() - observing)),
-              })
-              const checking = performance.now()
-              const post = Policy.evaluate({
-                phase: "post",
-                tool: input.tool,
-                adapter: "supported",
-                root: state.root,
-                effects: observed.effects,
-                declared,
-              })
-              await send({
-                action: observedAction,
-                phase: "postcheck",
-                timestamp: Date.now(),
-                decision: post,
-                duration: Math.max(0, Math.round(performance.now() - checking)),
-              })
-              if (post.verdict === "DENY") {
-                await tx.discard(observed, post)
-                throw denied(current, post)
-              }
-              if (post.verdict === "ASK") {
-                const answer = await Effect.runPromiseExit(
-                  review(ctx, post, observed.effects).pipe(Effect.provide(env)),
+            handle.transaction(
+              current,
+              async (tx) => {
+                const declared = [...current.effects]
+                const args = Adapter.rewrite(input.tool, input.args, state.root, tx.root)
+                const ctx: Tool.Context = {
+                  ...input.ctx,
+                  extra: {
+                    ...input.ctx.extra,
+                    autoMode: input.tool === "bash",
+                    autoRoot: state.root,
+                    autoShadow: tx.root,
+                    sandboxed: false,
+                  },
+                  ask: (req) => {
+                    declared.push(...Adapter.asked(req))
+                    return input.ctx.ask({
+                      ...req,
+                      metadata: { ...req.metadata, autoModeTrial: true },
+                    })
+                  },
+                }
+                const scope = { ...instance, directory: tx.root, worktree: tx.root }
+                const start = performance.now()
+                const output = await Instance.restore(scope, () =>
+                  Effect.runPromise(
+                    input.run(args, ctx).pipe(Effect.provide(env), Effect.provideService(InstanceRef, scope)),
+                  ),
                 )
-                if (Exit.isFailure(answer)) {
+                await send({
+                  action: result(current, declared),
+                  phase: "trial_finished",
+                  timestamp: Date.now(),
+                  duration: Math.max(0, Math.round(performance.now() - start)),
+                })
+                const observing = performance.now()
+                const observed = await tx.observe()
+                const observedAction = result(current, observed.effects)
+                await send({
+                  action: observedAction,
+                  phase: "observed",
+                  timestamp: Date.now(),
+                  duration: Math.max(0, Math.round(performance.now() - observing)),
+                })
+                const checking = performance.now()
+                const post = Policy.evaluate({
+                  phase: "post",
+                  tool: input.tool,
+                  adapter: "supported",
+                  root: state.root,
+                  effects: observed.effects,
+                  declared,
+                })
+                await send({
+                  action: observedAction,
+                  phase: "postcheck",
+                  timestamp: Date.now(),
+                  decision: post,
+                  duration: Math.max(0, Math.round(performance.now() - checking)),
+                })
+                if (post.verdict === "DENY") {
                   await tx.discard(observed, post)
                   throw denied(current, post)
                 }
-              }
-              const applied = await tx.apply(observed)
-              if (applied.status === "conflict") {
-                await Effect.runPromiseExit(review(ctx, applied.decision, observed.effects).pipe(Effect.provide(env)))
-                throw denied(current, applied.decision)
-              }
-              return restore(output, tx.root, state.root)
-            }),
+                if (post.verdict === "ASK") {
+                  const answer = await Effect.runPromiseExit(
+                    review(ctx, post, observed.effects).pipe(Effect.provide(env)),
+                  )
+                  if (Exit.isFailure(answer)) {
+                    await tx.discard(observed, post)
+                    throw denied(current, post)
+                  }
+                }
+                const applied = await tx.apply(observed)
+                if (applied.status === "conflict") {
+                  await Effect.runPromiseExit(review(ctx, applied.decision, observed.effects).pipe(Effect.provide(env)))
+                  throw denied(current, applied.decision)
+                }
+                return restore(output, tx.root, state.root)
+              },
+              input.ctx.abort,
+            ),
           catch: (cause) => (cause instanceof Error ? cause : new Error(String(cause))),
         })
       })
 
       const exit = yield* Effect.exit(run)
-      if (adapter.kind === "read" && Exit.isFailure(exit)) {
+      if (adapter.kind === "read" && Exit.isFailure(exit) && (pre.verdict === "ALLOW" || approval.reviewed)) {
         yield* emit({ action: current, phase: "failed", timestamp: Date.now(), error: new Error("Read action failed") })
       }
       yield* emit({

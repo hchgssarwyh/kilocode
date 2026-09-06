@@ -62,7 +62,7 @@ export namespace Workspace {
 
   export type Handle = {
     root: string
-    transaction<T>(action: Action, run: (tx: Transaction) => Promise<T>): Promise<T>
+    transaction<T>(action: Action, run: (tx: Transaction) => Promise<T>, signal?: AbortSignal): Promise<T>
     cleanup(): Promise<void>
   }
 
@@ -72,6 +72,7 @@ export namespace Workspace {
     shadow: Manifest.Info
     checkpoint: string
     terminal: boolean
+    signal?: AbortSignal
   }
 
   function elapsed(start: number) {
@@ -248,7 +249,7 @@ export namespace Workspace {
       const start = performance.now()
       const changes =
         observed ??
-        (await capture(shadow, opts.signal)
+        (await capture(shadow, state.signal)
           .then((current) => Observe.diff(state.shadow, current))
           .catch(() => undefined))
       await rm(shadow, { recursive: true, force: true })
@@ -268,10 +269,10 @@ export namespace Workspace {
     async function apply(state: State, observed: Observe.Result): Promise<Apply> {
       if (state.terminal) throw new Error("AUTO_APPLY_FAILED", "Auto Mode transaction is already complete")
       const start = performance.now()
-      const current = await capture(shadow, opts.signal)
+      const current = await capture(shadow, state.signal)
       validate(original, state.shadow, current, observed)
       const touched = paths(observed.effects)
-      const latest = await capture(original, opts.signal)
+      const latest = await capture(original, state.signal)
       if (conflict(state.original, latest, touched)) {
         const decision = Policy.evaluate({
           phase: "post",
@@ -348,7 +349,7 @@ export namespace Workspace {
       return { status: "applied", count: touched.length, duration }
     }
 
-    async function transaction<T>(action: Action, run: (tx: Transaction) => Promise<T>) {
+    async function transaction<T>(action: Action, run: (tx: Transaction) => Promise<T>, signal = opts.signal) {
       if (gate.closed) throw new Error("AUTO_APPLY_FAILED", "Auto Mode workspace is closed")
       const ready = gate.tail
       const next = Promise.withResolvers<void>()
@@ -358,14 +359,14 @@ export namespace Workspace {
       )
       await ready
       try {
-        opts.signal?.throwIfAborted()
+        signal?.throwIfAborted()
         if (action.sessionID !== opts.sessionID) {
           throw new Error("AUTO_APPLY_FAILED", "Auto Mode action belongs to a different session")
         }
         const checkpoint = path.join(storage, `checkpoint-${action.actionID}`)
         const start = performance.now()
-        const baseline = await capture(original, opts.signal)
-        const current = await capture(shadow, opts.signal)
+        const baseline = await capture(original, signal)
+        const current = await capture(shadow, signal)
         complete(baseline)
         complete(current)
         if (!aligned(baseline, current)) {
@@ -375,9 +376,10 @@ export namespace Workspace {
         const state = {
           action,
           original: baseline,
-          shadow: await capture(shadow, opts.signal),
+          shadow: await capture(shadow, signal),
           checkpoint,
           terminal: false,
+          signal,
         }
         try {
           complete(state.original)
@@ -388,7 +390,7 @@ export namespace Workspace {
           const tx: Transaction = {
             root: shadow,
             checkpoint: state.shadow,
-            observe: async () => Observe.diff(state.shadow, await capture(shadow, opts.signal)),
+            observe: async () => Observe.diff(state.shadow, await capture(shadow, state.signal)),
             apply: (observed) => apply(state, observed),
             discard: (observed, decision) => discard(state, true, decision, observed),
           }

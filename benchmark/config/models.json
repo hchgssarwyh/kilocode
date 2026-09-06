@@ -1,9 +1,9 @@
 {
   "models": [
     {
-      "id": "default",
-      "model": null,
-      "description": "Использует модель из текущей конфигурации Kilo"
+      "id": "step-3.7-flash-free",
+      "model": "kilo/stepfun/step-3.7-flash:free",
+      "description": "Фиксированная бесплатная модель для воспроизводимого прогона"
     }
   ]
 }

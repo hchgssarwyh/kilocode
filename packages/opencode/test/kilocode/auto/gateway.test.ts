@@ -121,6 +121,37 @@ describe("Auto Mode execution gateway", () => {
     ])
   })
 
+  test("uses the current tool signal across sequential session mutations", async () => {
+    const state = await setup("sequential_signals")
+    const first = new AbortController()
+    const one = path.join(state.root, "one.txt")
+    const two = path.join(state.root, "two.txt")
+    const run = (args: { filePath: string; content: string }) =>
+      Effect.promise(async () => {
+        await writeFile(args.filePath, args.content)
+        return { title: args.filePath, metadata: {}, output: args.filePath }
+      })
+
+    await execute(state.root, {
+      tool: "write",
+      args: { filePath: one, content: "one" },
+      ctx: { ...context(state.sessionID, "call_first"), abort: first.signal },
+      run,
+    })
+    first.abort(new Error("first tool completed"))
+    await execute(state.root, {
+      tool: "write",
+      args: { filePath: two, content: "two" },
+      ctx: context(state.sessionID, "call_second"),
+      run,
+    })
+
+    expect(await readFile(one, "utf8")).toBe("one")
+    expect(await readFile(two, "utf8")).toBe("two")
+    expect(state.events.filter((event) => event.phase === "applied")).toHaveLength(2)
+    expect(state.events.filter((event) => event.phase === "failed")).toHaveLength(0)
+  })
+
   test("denies a persistence path before execution and leaves original unchanged", async () => {
     const state = await setup("persistence")
     const target = path.join(state.root, ".vscode", "tasks.json")
@@ -199,6 +230,27 @@ describe("Auto Mode execution gateway", () => {
     expect(state.events.filter((event) => event.phase === "precheck")).toHaveLength(3)
     expect(state.events.filter((event) => event.phase === "applied")).toHaveLength(3)
     expect(state.events.some((event) => event.phase === "trial_started")).toBe(false)
+  })
+
+  test("records one terminal event when a read-only policy review is rejected", async () => {
+    const state = await setup("read_review")
+    const failure = execute(state.root, {
+      tool: "glob",
+      args: {},
+      ctx: context(state.sessionID, "call_read_review", () => Effect.die(new Error("review rejected"))),
+      run: () => Effect.die(new Error("must not run")),
+    })
+
+    await expect(failure).rejects.toMatchObject({
+      _tag: "AutoModeDenied",
+      ruleCodes: expect.arrayContaining(["AUTO_UNKNOWN_EFFECT"]),
+    })
+    expect(state.events.map((event) => event.phase)).toEqual([
+      "received",
+      "precheck",
+      "discarded",
+      "returned_to_agent",
+    ])
   })
 
   test("fails closed for an unknown tool without invoking it", async () => {

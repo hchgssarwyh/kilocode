@@ -147,6 +147,7 @@ function covered(entry: PendingEntry, approved: Ruleset, local: Ruleset) {
   if (ConfigProtection.isRequest(entry.info)) return false
   if (entry.info.metadata?.["skillShell"] === true) return false // kilocode_change - skill batch needs an explicit reply
   if (entry.info.metadata?.["sandboxEscalation"] === true) return false // kilocode_change - host access needs an explicit reply
+  if (entry.info.metadata?.["autoMode"] === true) return false // kilocode_change - policy ASK requires explicit review
   return entry.info.patterns.every((pattern) => {
     if (veto(entry.info.permission, pattern, entry.hardRuleset)) return false
     return resolve(entry.info.permission, pattern, entry.ruleset, approved, local).action === "allow"
@@ -213,7 +214,12 @@ const layer = Layer.effect(
         : false
       // kilocode_change end
 
-      const forceAsk = request.metadata?.["skillShell"] === true || request.metadata?.["sandboxEscalation"] === true // kilocode_change
+      // kilocode_change start - sensitive and Auto Mode policy reviews cannot inherit allow/YOLO rules
+      const forceAsk =
+        request.metadata?.["skillShell"] === true ||
+        request.metadata?.["sandboxEscalation"] === true ||
+        request.metadata?.["autoMode"] === true
+      // kilocode_change end
       for (const pattern of request.patterns) {
         const rule = resolve(request.permission, pattern, ruleset, approved, local) // kilocode_change — include session-scoped rules
         yield* Effect.logInfo("evaluated", { permission: request.permission, pattern, action: rule })

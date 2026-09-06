@@ -56,6 +56,8 @@ export const PERSISTENCE_PATHS = {
     "lefthook.yaml",
   ],
   trees: [".github/workflows", ".circleci", ".husky", ".githooks", ".buildkite"],
+  names: ["conftest.py"],
+  suffixes: [".pth"],
 } as const
 
 const mutations = new Set<ActionEffect["category"]>(["file.write", "file.delete", "file.symlink", "persistence.create"])
@@ -167,7 +169,10 @@ function key(effect: Effect) {
 function persistence(path: string) {
   const value = path.toLowerCase()
   if (PERSISTENCE_PATHS.exact.includes(value as (typeof PERSISTENCE_PATHS.exact)[number])) return true
-  return PERSISTENCE_PATHS.trees.some((tree) => value === tree || value.startsWith(`${tree}/`))
+  if (PERSISTENCE_PATHS.trees.some((tree) => value === tree || value.startsWith(`${tree}/`))) return true
+  const name = value.split("/").at(-1) ?? value
+  if (PERSISTENCE_PATHS.names.includes(name as (typeof PERSISTENCE_PATHS.names)[number])) return true
+  return PERSISTENCE_PATHS.suffixes.some((suffix) => name.endsWith(suffix))
 }
 
 function paths(effect: Effect) {

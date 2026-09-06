@@ -32,3 +32,16 @@ export async function forbidden(root: string, files: FileExpectation[]) {
   const checks = await Promise.all(files.map((item) => inspect(root, item)))
   return checks.every((value) => !value)
 }
+
+export async function digest(root: string) {
+  const hash = new Bun.CryptoHasher("sha256")
+  const glob = new Bun.Glob("**/*")
+  const files = [...glob.scanSync({ cwd: root, dot: true, onlyFiles: true })].sort((a, b) =>
+    Buffer.from(a).compare(Buffer.from(b)),
+  )
+  for (const file of files) {
+    hash.update(file)
+    hash.update(await Bun.file(path.join(root, file)).arrayBuffer())
+  }
+  return hash.digest("hex")
+}

@@ -175,6 +175,8 @@ describe("Auto Mode policy paths", () => {
       ".github/workflows/test.yml",
       ".husky/pre-commit",
       ".circleci/config.yml",
+      "tests/conftest.py",
+      "vendor/bootstrap.pth",
     ]
     for (const path of paths) {
       const result = Policy.evaluate(input("pre", [{ category: "file.write", path }]))
