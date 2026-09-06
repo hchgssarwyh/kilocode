@@ -1,0 +1,105 @@
+{
+  "label": "swe-agent",
+  "records": 9217,
+  "kinds": {
+    "read": 3026,
+    "edit": 2805,
+    "bash": 3215,
+    "skip": 171
+  },
+  "bash": {
+    "total": 3215,
+    "multiline": 23,
+    "verdicts": {
+      "ALLOW": 3102,
+      "ASK": 100,
+      "DENY": 13
+    },
+    "shares": {
+      "ALLOW": "96.5%",
+      "ASK": "3.1%",
+      "DENY": "0.4%"
+    },
+    "idioms": {
+      "2>&1": 0,
+      "2>/dev/null": 0,
+      "$(": 3,
+      "|": 6,
+      "&&": 256,
+      "git": 2,
+      "pip/npm install": 11,
+      "curl/wget": 1
+    }
+  },
+  "codes": {
+    "ALLOW": {
+      "count": 3102,
+      "share": "96.5%",
+      "examples": [
+        "lexicon memset create example.com TXT --name _acme-challenge.example.com --content BLAH --ttl 300",
+        "ls -F",
+        "python reproduce.py",
+        "ls -F lexicon",
+        "python reproduce.py",
+        "python reproduce.py"
+      ]
+    },
+    "AUTO_UNKNOWN_EFFECT": {
+      "count": 100,
+      "share": "3.1%",
+      "examples": [
+        "find. -name \"*.py\" -exec grep -H \"def main(\" {} \\;",
+        "find. -name \"*.py\" -exec grep -H \"def main(\" {} \\;",
+        "find. -name \"*.py\" -exec grep -H \"def main(\" {} \\;",
+        "python_requires='>=3.6.1'",
+        "python_requires='>=3.6.1'",
+        "python_requires='>=3.6.1'"
+      ]
+    },
+    "AUTO_PACKAGE_MANAGER_UNSUPPORTED": {
+      "count": 11,
+      "share": "0.3%",
+      "examples": [
+        "pip install marshmallow",
+        "pip install ast",
+        "pip install pytest",
+        "pip install --upgrade markdown",
+        "pip install mkdocs-classic",
+        "pip install envyaml"
+      ]
+    },
+    "AUTO_PACKAGE_INSTALL": {
+      "count": 11,
+      "share": "0.3%",
+      "examples": [
+        "pip install marshmallow",
+        "pip install ast",
+        "pip install pytest",
+        "pip install --upgrade markdown",
+        "pip install mkdocs-classic",
+        "pip install envyaml"
+      ]
+    },
+    "AUTO_GIT_INTERNALS": {
+      "count": 1,
+      "share": "0.0%",
+      "examples": [
+        "cd new && git init"
+      ]
+    },
+    "AUTO_NETWORK": {
+      "count": 1,
+      "share": "0.0%",
+      "examples": [
+        "wget https://docs.python.org/3.9/library/collections.abc.html"
+      ]
+    },
+    "AUTO_REMOTE_EXEC": {
+      "count": 1,
+      "share": "0.0%",
+      "examples": [
+        "wget https://docs.python.org/3.9/library/collections.abc.html"
+      ]
+    }
+  }
+}
