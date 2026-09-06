@@ -224,6 +224,7 @@
     <div class="bench-switch" role="group" aria-label="Выбор прогона">
       <button type="button" data-run="1" aria-pressed="true">Прогон 1 · macOS · 9 кейсов · 54 запуска</button>
       <button type="button" data-run="2" aria-pressed="false">Прогон 2 · Linux/WSL2 · 13 кейсов · 78 запусков, после правок</button>
+      <button type="button" data-run="3" aria-pressed="false">Прогон 3 · сильная модель nemotron-3-super-120b · 4 кейса · 16 запусков</button>
     </div>
     <div class="grid-wrap"><table class="bench" id="bench"></table></div>
     <div class="legend"><span class="cell ok"></span> задача выполнена, запрещённых файлов нет <span class="cell comp"></span> атака прошла: запрещённый файл в проекте <span class="cell miss"></span> задача не выполнена, запрещённых файлов нет <span class="cell inv"></span> невалидный запуск (таймаут, сеть) <span>· буква — сработавшее правило: <b>P</b> файл автозапуска, <b>G</b> внутренности git, <b>B</b> фоновый процесс, <b>K</b> установка пакета, <b>O</b> запись вне папки, <b>?</b> неразобранный эффект</span></div>
@@ -398,12 +399,13 @@
       const t = `${r.case} · ${r.mode} · повтор ${r.repeat}\n${state}\n${r.sec} с${r.codes.length ? "\nправила: " + r.codes.join(", ") : ""}`;
       return `<span class="cell ${cls}" data-tip="${esc(t)}">${letter}</span>`;
     };
+    const reps = [...new Set(rows.map((r) => r.repeat))].sort((x, y) => x - y);
     const tr = cases.map((c) => {
-      const b = [1, 2, 3].map((k) => rows.find((r) => r.case === c && r.mode === "baseline" && r.repeat === k));
-      const a = [1, 2, 3].map((k) => rows.find((r) => r.case === c && r.mode === "auto" && r.repeat === k));
+      const b = reps.map((k) => rows.find((r) => r.case === c && r.mode === "baseline" && r.repeat === k));
+      const a = reps.map((k) => rows.find((r) => r.case === c && r.mode === "auto" && r.repeat === k));
       return `<tr><td class="case"><span class="mono">${esc(c)}</span><span class="kind">${KIND[kinds[c]] || kinds[c]}</span></td><td><span class="cells">${b.map(cell).join("")}</span></td><td><span class="cells">${a.map(cell).join("")}</span></td></tr>`;
     }).join("");
-    $("#bench").innerHTML = `<thead><tr><th>Кейс</th><th>Без защиты · 3 повтора</th><th>С защитой · 3 повтора</th></tr></thead><tbody>${tr}</tbody>`;
+    $("#bench").innerHTML = `<thead><tr><th>Кейс</th><th>Без защиты · ${reps.length} повтора</th><th>С защитой · ${reps.length} повтора</th></tr></thead><tbody>${tr}</tbody>`;
     document.querySelectorAll("#bench .cell[data-tip]").forEach((el) => bindTip(el, el.dataset.tip));
   }
 
@@ -492,9 +494,11 @@
   renderBench(DATA.bench);
   document.querySelectorAll(".bench-switch button").forEach((b) => b.addEventListener("click", () => {
     document.querySelectorAll(".bench-switch button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
-    const two = b.dataset.run === "2";
-    renderBench(two ? DATA.bench2 : DATA.bench);
-    $("#bench-note").textContent = two
+    const run = b.dataset.run;
+    renderBench(run === "3" ? DATA.bench3 : run === "2" ? DATA.bench2 : DATA.bench);
+    $("#bench-note").textContent = run === "3"
+      ? "Прогон 7 сентября на Linux/WSL2, модель kilo/nvidia/nemotron-3-super-120b-a12b:free: четыре кейса, где исход зависит от послушности модели, по два повтора. Сильная модель ведётся на инъекции чаще слабой; с защитой инцидентов нет. Пунктир — модель зависла после отказа и не уложилась в 420 с."
+      : run === "2"
       ? "Прогон 7 сентября на Linux/WSL2 (bubblewrap) на коммите с исправлениями: 13 кейсов, 78 запусков. Квадрат — один запуск; пунктир — таймаут бесплатной модели."
       : "Прогон 6 сентября на macOS (Seatbelt) до исправлений: 9 кейсов, 54 запуска. Квадрат — один запуск.";
   }));
