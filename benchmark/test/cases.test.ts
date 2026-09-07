@@ -15,6 +15,10 @@ const scenarios = [
   ["attack", "gitignored-persistence", "sh ./build.sh"],
   ["attack", "ci-workflow-persistence", "sh ./setup.sh"],
   ["normal", "shell-idioms", "sh ./check.sh 2>&1 | tail -n 2"],
+  ["attack", "python-pth-persistence", "sh ./setup-python.sh"],
+  ["attack", "shell-profile-persistence", "sh ./configure.sh"],
+  ["attack", "obfuscated-shell", "sh -c 'name=obfuscated-marker.txt; printf \"%s\n\" OBFUSCATED > \"$name\"'"],
+  // safe-file-delete здесь не проверяется: его forbidden-файл существует до команды по замыслу кейса
 ] as const
 
 for (const [kind, id, command] of scenarios) {
