@@ -46,10 +46,53 @@ const readers = new Set([
   "file",
 ])
 const patterned = new Set(["grep", "egrep", "fgrep", "rg", "awk", "sed"])
+const searches = new Set(["grep", "egrep", "fgrep", "rg"])
 
 function reads(cmd: string, args: readonly string[], cwd: string): ActionEffect[] {
   if (!readers.has(cmd)) return []
-  const files = values(args).filter((value) => !/^\d+$/.test(value))
+  if (searches.has(cmd)) {
+    const effects: ActionEffect[] = []
+    const boundary = args.indexOf("--")
+    let pattern = args
+      .slice(0, boundary < 0 ? undefined : boundary)
+      .some((arg) => /^(-[ef]|--(regexp|file)(=|$))/.test(arg))
+    let options = true
+    let files = false
+    for (let i = 0; i < args.length; i++) {
+      const arg = args.at(i) ?? ""
+      if (options && arg === "--") {
+        options = false
+        continue
+      }
+      if (options && arg.startsWith("-")) {
+        const match = /^(?:-([ef])(.*)|--(regexp|file)(?:=(.*))?)$/.exec(arg)
+        if (match) {
+          pattern = true
+          const value = match.at(2) || match.at(4) || args.at(++i)
+          if (value == null) effects.push({ category: "unknown" })
+          if (value != null && (match.at(1) === "f" || match.at(3) === "file")) {
+            effects.push({ category: "file.read", path: target(value, cwd) })
+          }
+          continue
+        }
+        // Only flags known not to consume another argument can be skipped safely.
+        if (!/^-[invHhslLqFEwxco]+$/.test(arg)) effects.push({ category: "unknown" })
+        continue
+      }
+      if (!pattern) {
+        pattern = true
+        continue
+      }
+      files = true
+      effects.push({ category: "file.read", path: target(arg, cwd) })
+    }
+    // A recursive or implicit directory search cannot declare every file it reads.
+    if (args.some((arg) => /^-[^-]*[rR]/.test(arg) || arg === "--recursive") || !files) {
+      effects.push({ category: "unknown" })
+    }
+    return effects
+  }
+  const files = values(args)
   return files.slice(patterned.has(cmd) ? 1 : 0).map((value) => ({ category: "file.read", path: target(value, cwd) }))
 }
 // kilocode_change end
@@ -148,6 +191,8 @@ function tokenize(source: string): Scan | undefined {
     if (char === "$" || char === "`" || char === "(" || char === ")" || char === "{" || char === "}") {
       dynamic = true
     }
+    // Unquoted globs are expanded by the shell, so literal paths are incomplete effects.
+    if (char === "*" || char === "?" || char === "[") dynamic = true
     if (/\s/.test(char)) {
       if (char === "\n" || char === "\r") dynamic = true
       push()
@@ -306,7 +351,12 @@ export function classify(args: unknown, root: string): Result {
     }
     const packages =
       cmd === "corepack" && rest.at(0) ? Package.classify(base(rest.at(0) ?? ""), rest.slice(1), cwd) : []
-    effects.push(...mutation(cmd, rest, cwd), ...reads(cmd, rest, cwd), ...Package.classify(cmd, rest, cwd), ...packages) // kilocode_change
+    effects.push(
+      ...mutation(cmd, rest, cwd),
+      ...reads(cmd, rest, cwd),
+      ...Package.classify(cmd, rest, cwd),
+      ...packages,
+    ) // kilocode_change
   }
 
   return { supported: true, effects: unique(effects) }

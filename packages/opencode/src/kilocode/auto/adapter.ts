@@ -1,5 +1,6 @@
 import type { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import path from "node:path"
+import { lstat } from "node:fs/promises"
 import { Patch } from "@/patch"
 import type { ActionEffect } from "./types"
 import * as Shell from "./shell"
@@ -11,6 +12,7 @@ export namespace Adapter {
   export type Info = {
     kind: Kind
     effects: readonly ActionEffect[]
+    search?: string
   }
 
   export const registry = {
@@ -99,14 +101,26 @@ export namespace Adapter {
     const kind: Kind = tool in registry ? registry[tool as keyof typeof registry] : "unsupported"
     if (kind === "unsupported") return { kind, effects: [{ category: "unknown" }] }
     const input = record(args)
+    if (tool === "grep") {
+      return {
+        kind,
+        search: path.resolve(root, text(input, "path") ?? root),
+        effects: [...read(tool, input, root), { category: "unknown" }],
+      }
+    }
     return { kind, effects: kind === "read" ? read(tool, input, root) : mutation(tool, input) }
   }
 
-  export function assess(
+  export async function assess(
     info: Info,
     opts: { root: string; checker?: Package.Checker; timeout?: number; signal?: AbortSignal },
   ): Promise<Info> {
-    return Package.assess(info.effects, opts).then((effects) => ({ ...info, effects }))
+    const effects = await Package.assess(info.effects, opts)
+    if (!info.search) return { ...info, effects }
+    const file = await lstat(info.search).catch(() => undefined)
+    // Directory searches (including include globs) can expose secrets. Require review
+    // unless the search is confined to one regular file that the policy can classify.
+    return { ...info, effects: file?.isFile() ? effects.filter((effect) => effect.category !== "unknown") : effects }
   }
 
   function replace(value: string, root: string, shadow: string) {

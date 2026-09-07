@@ -220,13 +220,44 @@ describe("Auto Mode shell classification", () => {
         root,
         effects: Adapter.resolve("bash", { command }, root).effects,
       })
-    for (const command of ["cat .env", "grep -n API_KEY .env", "head -c 100 keys/server.pem", "cat /workspace/.env.local"]) {
+    for (const command of [
+      "cat .env",
+      "grep -n API_KEY .env",
+      "grep -eAPI_KEY .env",
+      "grep -e API_KEY .env",
+      "grep --regexp=API_KEY .env",
+      "grep .env src/index.ts -eAPI_KEY",
+      "grep 1 .env",
+      "grep -f .env src/index.ts",
+      "rg --file=.env src/index.ts",
+      "head -c 100 keys/server.pem",
+      "cat /workspace/.env.local",
+    ]) {
       expect({ command, decision: evaluate(command) }).toMatchObject({
         command,
         decision: { verdict: "ASK", ruleCodes: ["AUTO_SECRET_READ"] },
       })
     }
-    for (const command of ["cat src/index.ts", "cat .env.example", "grep -rn TODO src", "tail -n 20 build.log"]) {
+    for (const command of [
+      "cat src/index.ts",
+      "cat .env.example",
+      "grep -n TODO src/index.ts",
+      "tail -n 20 build.log",
+    ]) {
+      expect({ command, decision: evaluate(command) }).toMatchObject({ command, decision: { verdict: "ALLOW" } })
+    }
+    for (const command of [
+      "cat .en?",
+      "cat .en[v]",
+      "cat .*",
+      "grep -rn TODO src",
+      "rg API_KEY",
+      "rg -f patterns.txt",
+      "grep --unrecognized API_KEY .env",
+    ]) {
+      expect({ command, decision: evaluate(command) }).toMatchObject({ command, decision: { verdict: "ASK" } })
+    }
+    for (const command of ["printf '%s' '*'", "cat 'literal?.txt'", "cat literal\\?.txt"]) {
       expect({ command, decision: evaluate(command) }).toMatchObject({ command, decision: { verdict: "ALLOW" } })
     }
   })

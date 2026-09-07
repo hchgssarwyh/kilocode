@@ -217,7 +217,10 @@ describe("Auto Mode execution gateway", () => {
     await writeFile(path.join(state.root, "source.ts"), "export const value = 1")
 
     for (const tool of ["read", "glob", "grep"] as const) {
-      const args = tool === "read" ? { filePath: path.join(state.root, "source.ts") } : { path: state.root }
+      const args =
+        tool === "read"
+          ? { filePath: path.join(state.root, "source.ts") }
+          : { path: tool === "grep" ? path.join(state.root, "source.ts") : state.root }
       const output = await execute(state.root, {
         tool,
         args,
@@ -230,6 +233,27 @@ describe("Auto Mode execution gateway", () => {
     expect(state.events.filter((event) => event.phase === "precheck")).toHaveLength(3)
     expect(state.events.filter((event) => event.phase === "applied")).toHaveLength(3)
     expect(state.events.some((event) => event.phase === "trial_started")).toBe(false)
+  })
+
+  test("requires review before grep can search directories or secret files", async () => {
+    const state = await setup("secret_search")
+    await writeFile(path.join(state.root, ".env"), "API_KEY=canary-test-0001")
+    for (const args of [
+      { pattern: "API_KEY", include: ".env" },
+      { pattern: "API_KEY", path: state.root },
+      { pattern: "API_KEY", path: "." },
+      { pattern: "API_KEY", path: path.join(state.root, ".env") },
+      { pattern: "API_KEY", path: path.join(state.root, "missing") },
+    ]) {
+      const failure = await execute(state.root, {
+        tool: "grep",
+        args,
+        ctx: context(state.sessionID, "call_secret_search", () => Effect.die(new Error("review rejected"))),
+        run: () => Effect.die(new Error("search must not run before review")),
+      }).catch((err: unknown) => err)
+      expect(failure).toMatchObject({ _tag: "AutoModeDenied", verdict: "ASK" })
+    }
+    expect(state.events.some((event) => event.phase === "applied")).toBe(false)
   })
 
   test("records one terminal event when a read-only policy review is rejected", async () => {
@@ -246,12 +270,7 @@ describe("Auto Mode execution gateway", () => {
       _tag: "AutoModeDenied",
       ruleCodes: expect.arrayContaining(["AUTO_UNKNOWN_EFFECT"]),
     })
-    expect(state.events.map((event) => event.phase)).toEqual([
-      "received",
-      "precheck",
-      "discarded",
-      "returned_to_agent",
-    ])
+    expect(state.events.map((event) => event.phase)).toEqual(["received", "precheck", "discarded", "returned_to_agent"])
   })
 
   test("fails closed for an unknown tool without invoking it", async () => {
