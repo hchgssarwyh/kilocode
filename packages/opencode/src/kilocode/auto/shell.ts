@@ -17,6 +17,42 @@ export type Result = {
 
 const network = new Set(["curl", "wget", "nc", "ncat", "netcat", "ssh", "scp", "sftp", "ftp", "telnet", "rsync"])
 const background = new Set(["bg", "daemon", "daemonize", "disown", "nohup", "setsid"])
+// kilocode_change start: чтение файлов из shell объявляется как file.read, чтобы правило секретов видело
+// "cat .env" так же, как инструмент read. Для команд с шаблоном первым аргументом (grep, awk, sed) он пропускается.
+const devices = new Set(["/dev/null", "/dev/stdout", "/dev/stderr", "/dev/tty", "/dev/zero"])
+const readers = new Set([
+  "cat",
+  "head",
+  "tail",
+  "less",
+  "more",
+  "grep",
+  "egrep",
+  "fgrep",
+  "rg",
+  "awk",
+  "sed",
+  "cut",
+  "sort",
+  "uniq",
+  "wc",
+  "strings",
+  "base64",
+  "xxd",
+  "od",
+  "hexdump",
+  "diff",
+  "stat",
+  "file",
+])
+const patterned = new Set(["grep", "egrep", "fgrep", "rg", "awk", "sed"])
+
+function reads(cmd: string, args: readonly string[], cwd: string): ActionEffect[] {
+  if (!readers.has(cmd)) return []
+  const files = values(args).filter((value) => !/^\d+$/.test(value))
+  return files.slice(patterned.has(cmd) ? 1 : 0).map((value) => ({ category: "file.read", path: target(value, cwd) }))
+}
+// kilocode_change end
 const opaque = new Set([
   "command",
   "env",
@@ -123,7 +159,8 @@ function tokenize(source: string): Scan | undefined {
     }
     push()
     const pair = char + (source.at(i + 1) ?? "")
-    if (["&&", "||", ">>", "<<"].includes(pair)) {
+    // kilocode_change: ">&" и "&>" — операторы перенаправления, а не фоновый запуск ("2>&1", "&>log").
+    if (["&&", "||", ">>", "<<", ">&", "&>"].includes(pair)) {
       tokens.push({ kind: "operator", text: pair })
       i++
       continue
@@ -218,11 +255,18 @@ export function classify(args: unknown, root: string): Result {
     if (token.text === "<<" || token.text === "<") {
       effects.push({ category: "unknown" })
     }
-    if (token.text === ">" || token.text === ">>") {
+    if (token.text === ">" || token.text === ">>" || token.text === ">&" || token.text === "&>") {
       const next = scan.tokens.at(i + 1)
       if (next?.kind !== "word") effects.push({ category: "unknown" })
       if (next?.kind === "word") {
-        effects.push({ category: "file.write", path: target(next.text, cwd) })
+        // kilocode_change start: дублирование дескриптора ("2>&1", ">&2") и псевдоустройства ("2>/dev/null")
+        // не являются записью файла. Раньше "/dev/null" считался записью вне workspace (DENY), а "&" из
+        // "2>&1" — фоновым процессом (DENY): обе идиомы блокировали легитимные команды.
+        const descriptor = token.text === ">&" && /^\d+$/.test(next.text)
+        if (!descriptor && !devices.has(next.text)) {
+          effects.push({ category: "file.write", path: target(next.text, cwd) })
+        }
+        // kilocode_change end
         i++
       }
     }
@@ -262,7 +306,7 @@ export function classify(args: unknown, root: string): Result {
     }
     const packages =
       cmd === "corepack" && rest.at(0) ? Package.classify(base(rest.at(0) ?? ""), rest.slice(1), cwd) : []
-    effects.push(...mutation(cmd, rest, cwd), ...Package.classify(cmd, rest, cwd), ...packages)
+    effects.push(...mutation(cmd, rest, cwd), ...reads(cmd, rest, cwd), ...Package.classify(cmd, rest, cwd), ...packages) // kilocode_change
   }
 
   return { supported: true, effects: unique(effects) }

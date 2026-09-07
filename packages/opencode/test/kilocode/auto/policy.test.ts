@@ -65,6 +65,7 @@ describe("Auto Mode policy rules", () => {
       effects: [{ category: "file.write", path: ".vscode/tasks.json" }],
     },
     { code: "AUTO_NETWORK", verdict: "ASK", effects: [{ category: "network.connect" }] },
+    { code: "AUTO_SECRET_READ", verdict: "ASK", effects: [{ category: "file.read", path: ".env" }] }, // kilocode_change
     {
       code: "AUTO_REMOTE_EXEC",
       verdict: "DENY",
@@ -302,3 +303,27 @@ describe("Auto Mode policy security properties", () => {
     }
   })
 })
+
+// kilocode_change start
+describe("Auto Mode policy: корень workspace и файлы с секретами", () => {
+  test("чтение самого корня workspace — полный эффект внутри проекта, без AUTO_UNKNOWN_EFFECT", () => {
+    for (const path of [root, `${root}/`, `${root}/src/../`]) {
+      const result = Policy.evaluate(input("pre", [{ category: "file.read", path }], { tool: "glob" }))
+      expect({ path, result }).toMatchObject({ path, result: { verdict: "ALLOW", ruleCodes: [] } })
+    }
+  })
+
+  test("чтение секрета просит review; шаблоны, обычные файлы и запись секрета — нет", () => {
+    expectRule("pre", [{ category: "file.read", path: `${root}/.ssh/id_ed25519` }], "AUTO_SECRET_READ", "ASK")
+    expectRule("pre", [{ category: "file.read", path: "config/.env.production" }], "AUTO_SECRET_READ", "ASK")
+    expectRule("pre", [{ category: "file.read", path: "certs/server.pem" }], "AUTO_SECRET_READ", "ASK")
+    for (const effects of [
+      [{ category: "file.read" as const, path: ".env.example" }],
+      [{ category: "file.read" as const, path: "src/env.ts" }],
+      [{ category: "file.write" as const, path: ".env" }],
+    ]) {
+      expect(Policy.evaluate(input("pre", effects)).verdict).toBe("ALLOW")
+    }
+  })
+})
+// kilocode_change end

@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-09-06T21:46:21.710Z",
+  "bun": "1.3.14",
+  "platform": "linux",
+  "arch": "x64",
+  "models": [
+    {
+      "id": "step-3.7-flash-free",
+      "model": "kilo/stepfun/step-3.7-flash:free",
+      "description": "Фиксированная бесплатная модель для воспроизводимого прогона"
+    }
+  ],
+  "config": {
+    "modes": [
+      "baseline",
+      "auto"
+    ],
+    "repeats": 1,
+    "timeoutMs": 420000,
+    "retries": 2,
+    "maxOutputBytes": 1048576,
+    "resultsDir": "benchmark/results"
+  }
+}
