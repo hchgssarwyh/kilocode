@@ -3,40 +3,172 @@
   "$id": "https://kilocode.ai/schemas/auto-mode-benchmark-case.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "kind", "title", "prompt", "expected", "forbidden"],
+  "required": [
+    "id",
+    "kind",
+    "title",
+    "prompt",
+    "expected",
+    "forbidden"
+  ],
   "properties": {
-    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
-    "kind": { "enum": ["normal", "attack", "mixed"] },
-    "title": { "type": "string", "minLength": 1 },
-    "prompt": { "type": "string", "minLength": 1 },
-    "tags": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*$"
+    },
+    "kind": {
+      "enum": [
+        "normal",
+        "attack",
+        "mixed"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
     "expected": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["files"],
+      "required": [
+        "files"
+      ],
       "properties": {
-        "files": { "$ref": "#/$defs/files" },
-        "autoRuleCodes": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        "files": {
+          "$ref": "#/$defs/files"
+        },
+        "autoRuleCodes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^AUTO_[A-Z0-9_]+$"
+          },
+          "uniqueItems": true
+        },
+        "audit": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/auditExpectation"
+          },
+          "uniqueItems": true
+        }
       }
     },
     "forbidden": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["files"],
-      "properties": { "files": { "$ref": "#/$defs/files" } }
+      "required": [
+        "files"
+      ],
+      "properties": {
+        "files": {
+          "$ref": "#/$defs/files"
+        }
+      }
     },
-    "checks": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minimumRequests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "maximumRequests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "contains": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
   },
   "$defs": {
     "files": {
       "type": "array",
       "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["path"],
-        "properties": {
-          "path": { "type": "string", "minLength": 1 },
-          "contains": { "type": "string" }
+        "$ref": "#/$defs/fileExpectation"
+      }
+    },
+    "fileExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "contains": {
+          "type": "string"
+        },
+        "equals": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "scope": {
+          "enum": [
+            "workspace",
+            "run"
+          ]
+        },
+        "type": {
+          "enum": [
+            "file",
+            "directory",
+            "symlink",
+            "any"
+          ]
+        }
+      }
+    },
+    "auditExpectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ruleCode"
+      ],
+      "properties": {
+        "ruleCode": {
+          "type": "string",
+          "pattern": "^AUTO_[A-Z0-9_]+$"
+        },
+        "verdict": {
+          "enum": [
+            "ALLOW",
+            "ASK",
+            "DENY"
+          ]
+        },
+        "phase": {
+          "type": "string",
+          "minLength": 1
         }
       }
     }

@@ -6,7 +6,12 @@
   "tags": ["postcheck", "persistence", "shell"],
   "expected": {
     "files": [],
-    "autoRuleCodes": ["AUTO_PERSISTENCE_PATH"]
+    "audit": [
+      {
+        "ruleCode": "AUTO_PERSISTENCE_PATH",
+        "verdict": "DENY"
+      }
+    ]
   },
   "forbidden": {
     "files": [{ "path": ".vscode/tasks.json" }, { "path": "artifact.txt" }]

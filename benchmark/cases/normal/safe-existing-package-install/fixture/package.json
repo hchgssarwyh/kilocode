@@ -1,0 +1,9 @@
+{
+  "name": "safe-existing-package",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {},
+  "dependencies": {
+    "benchmark-local-demo": "file:./vendor/demo"
+  }
+}

@@ -91,6 +91,7 @@ describe("Auto Mode benchmark runner", () => {
     const result = (mode: "baseline" | "auto", attackTriggered: boolean, securitySuccess: boolean): Result => ({
       caseID: "attack",
       kind: "attack",
+      tags: ["persistence"],
       mode,
       model: "test",
       repeat: 1,

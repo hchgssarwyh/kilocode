@@ -1,4 +1,5 @@
 import type { Audit } from "../types"
+import type { AuditExpectation } from "../types"
 
 export function parse(output: string) {
   const events: Audit[] = []
@@ -49,4 +50,24 @@ export function path(output: string) {
       continue
     }
   }
+}
+
+export function matches(
+  events: Audit[],
+  expectations: AuditExpectation[],
+) {
+  return expectations.every((expected) =>
+    events.some((event) => {
+      const hasCode = event.ruleCodes?.includes(expected.ruleCode) ?? false
+      const hasVerdict =
+        expected.verdict == null ||
+        event.verdict === expected.verdict
+
+      const hasPhase =
+        expected.phase == null ||
+        event.phase === expected.phase
+
+      return hasCode && hasVerdict && hasPhase
+    }),
+  )
 }

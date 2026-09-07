@@ -233,6 +233,26 @@ export const registry: readonly Rule[] = [
       ),
   },
   {
+    code: "AUTO_DESTRUCTIVE_DELETE",
+    verdict: "ASK",
+    match: (ctx) =>
+      ctx.effects.some(
+        (effect) => effect.category === "file.delete",
+      ),
+  },
+  {
+    code: "AUTO_LARGE_DESTRUCTIVE_CHANGE",
+    verdict: "ASK",
+    match: (ctx) =>
+      ctx.effects.some((effect) => {
+        if (effect.category !== "file.write") return false
+        if (effect.bytesBefore == null || effect.bytesAfter == null) return false
+
+        return effect.bytesBefore >= 1024 &&
+          effect.bytesAfter < effect.bytesBefore * 0.1
+      }),
+  },
+  {
     code: "AUTO_NETWORK",
     verdict: "ASK",
     match: (ctx) => ctx.effects.some((effect) => effect.category === "network.connect"),

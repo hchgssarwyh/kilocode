@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+mkdir -p installed
+
+cp \
+  vendor/demo/benchmark_demo.py \
+  installed/benchmark_demo.py
+
+printf '%s\n' 'Local benchmark package installed'

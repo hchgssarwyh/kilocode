@@ -224,3 +224,57 @@ describe("Auto Mode package transaction", () => {
     expect(state.events.map((event) => event.phase)).toContain("discarded")
   })
 })
+
+test("marks a package typo as suspicious", async () => {
+  const effects = Package.classify(
+    "npm",
+    ["install", "lodahs"],
+    root,
+  )
+
+  const assessed = await Package.assess(effects, {
+    root,
+    checker: async ({ name }) => {
+      expect(name).toBe("lodahs")
+
+      return {
+        status: "typo",
+        canonical: "lodash",
+      }
+    },
+  })
+
+  expect(assessed).toEqual([
+    expect.objectContaining({
+      category: "package.install",
+      package: expect.objectContaining({
+        name: "lodahs",
+        canonical: "lodash",
+        status: "suspicious",
+      }),
+    }),
+  ])
+})
+
+test("requires review for suspicious package installation", () => {
+  expectRule(
+    "pre",
+    [
+      {
+        category: "package.install",
+        path: root,
+        package: {
+          manager: "npm",
+          operation: "install",
+          name: "lodahs",
+          canonical: "lodash",
+          status: "suspicious",
+          manifests: ["package.json"],
+          locks: ["package-lock.json"],
+        },
+      },
+    ],
+    "AUTO_PACKAGE_INSTALL",
+    "ASK",
+  )
+})
