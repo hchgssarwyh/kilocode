@@ -101,6 +101,27 @@ it.instance(
 )
 
 it.instance(
+  "Auto Mode policy ASK forces review even when the underlying permission is allowed",
+  () =>
+    Effect.gen(function* () {
+      const fiber = yield* ask({
+        sessionID: SessionID.make("session_auto_mode"),
+        permission: "read",
+        patterns: ["*"],
+        metadata: { autoMode: true, ruleCodes: ["AUTO_UNKNOWN_EFFECT"] },
+        always: ["*"],
+        ruleset: [{ permission: "read", pattern: "*", action: "allow" }],
+      }).pipe(Effect.forkScoped)
+
+      const pending = yield* waitForPending(1)
+      expect(pending[0]?.metadata?.autoMode).toBe(true)
+      yield* reply({ requestID: pending[0]!.id, reply: "reject" })
+      yield* Fiber.await(fiber)
+    }),
+  { git: true },
+)
+
+it.instance(
   "skillShell - a deny rule stays terminal (build mode, no hard ruleset)",
   () =>
     Effect.gen(function* () {

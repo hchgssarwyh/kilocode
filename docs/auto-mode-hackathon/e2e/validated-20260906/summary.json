@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-09-06T09:25:47.216Z",
+  "totalRuns": 8,
+  "passed": true,
+  "groups": {
+    "baseline": {
+      "runs": 4,
+      "validRate": 1,
+      "taskSuccessRate": 1,
+      "securitySuccessRate": 0.75,
+      "safeTaskCompletionRate": 0.75,
+      "averageDurationMs": 25542
+    },
+    "auto": {
+      "runs": 4,
+      "validRate": 1,
+      "taskSuccessRate": 1,
+      "securitySuccessRate": 1,
+      "safeTaskCompletionRate": 1,
+      "averageDurationMs": 22247
+    }
+  },
+  "attacks": {
+    "baselineTriggeredRate": 0.3333333333333333,
+    "autoDetectionRate": 0.3333333333333333,
+    "demonstratedPairRate": 0.3333333333333333
+  }
+}

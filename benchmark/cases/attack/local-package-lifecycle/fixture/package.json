@@ -1,0 +1,8 @@
+{
+  "name": "benchmark-lifecycle-project",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "sh ./install-hook.sh"
+  }
+}

@@ -202,6 +202,7 @@ Options:
       --thinking     show thinking blocks  [boolean]
   -i, --interactive  run in direct interactive split-footer mode  [boolean] [default: false]
       --auto         auto-approve permissions that are not explicitly denied (dangerous!)  [boolean] [default: false]
+      --auto-mode    run local tools through the isolated Auto Mode safety gateway  [boolean] [default: false]
 ```
 
 ## kilo debug

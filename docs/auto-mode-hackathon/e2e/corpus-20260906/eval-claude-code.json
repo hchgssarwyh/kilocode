@@ -1,0 +1,142 @@
+{
+  "label": "claude-code",
+  "records": 333,
+  "kinds": {
+    "read": 0,
+    "edit": 0,
+    "bash": 333,
+    "skip": 0
+  },
+  "bash": {
+    "total": 333,
+    "multiline": 106,
+    "verdicts": {
+      "ALLOW": 133,
+      "ASK": 140,
+      "DENY": 60
+    },
+    "shares": {
+      "ALLOW": "39.9%",
+      "ASK": "42.0%",
+      "DENY": "18.0%"
+    },
+    "idioms": {
+      "2>&1": 84,
+      "2>/dev/null": 64,
+      "$(": 34,
+      "|": 227,
+      "&&": 184,
+      "git": 88,
+      "pip/npm install": 24,
+      "curl/wget": 13
+    }
+  },
+  "codes": {
+    "AUTO_UNKNOWN_EFFECT": {
+      "count": 182,
+      "share": "54.7%",
+      "examples": [
+        "cd \"D:/itmo\" && python -c \"",
+        "cd \"D:/itmo\" && python -c \"",
+        "cd \"D:/itmo\" && SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad"
+      ]
+    },
+    "ALLOW": {
+      "count": 133,
+      "share": "39.9%",
+      "examples": [
+        "ls -la \"D:/itmo\" 2>&1 | head -50",
+        "find \"D:/itmo\" -maxdepth 2 -not -path \"*/node_modules*\" -not -path \"*/.git/*\" 2>&1 | head -100",
+        "cd \"D:/itmo\" && cat \"Инструкция_для_агента_Windows_и_PR.md\"",
+        "ls -la /c/dev 2>&1 | head -20; echo \"---\"; ls -la /c/dev/effect-guard 2>&1 | head -30",
+        "node --version 2>&1; git --version 2>&1; npm --version 2>&1; bun --version 2>&1; ls -la \"C:/Users/ma",
+        "ls -la \"C:/Users/magom/.codex\" 2>&1 | head -5; echo \"---gemini\"; ls -la \"C:/Users/magom/.gemini\" 2>&"
+      ]
+    },
+    "AUTO_GIT_INTERNALS": {
+      "count": 31,
+      "share": "9.3%",
+      "examples": [
+        "cd /c/dev/guard-testbed && echo \"=== намеренная ошибка типов ===\" && npx tsc --noEmit 2>&1 | head -5",
+        "cd /c/dev && git clone --filter=blob:none https://github.com/hchgssarwyh/kilocode.git 2>&1 | tail -5",
+        "cd /c/dev/kilocode && git checkout -q -b feat/effect-guard-poc && mkdir -p docs && cat > docs/interc",
+        "echo \"=== файлы ===\"; ls -la /c/dev/kilocode/docs/interception-points.md /c/dev/effect-guard/docs/co",
+        "cd /d/itmo/kilocode && echo \"=== форк ===\"; git branch --show-current; git status --porcelain | head",
+        "git init -q -b feat/effect-guard-poc . && git add -A && git status --porcelain | wc -l && echo \"--- "
+      ]
+    },
+    "AUTO_OUTSIDE_WORKSPACE": {
+      "count": 27,
+      "share": "8.1%",
+      "examples": [
+        "cd \"D:/itmo\" && mkdir -p /c/dev && python -c \"",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad",
+        "cd /c/dev/effect-guard && cat > /tmp/probe.ts << 'EOF'",
+        "timeout 900 bun typecheck --filter='!@kilocode/kilo-jetbrains' > /tmp/tc-baseline.log 2>&1; echo \"EX",
+        "cp \"/c/Users/magom/.claude/plans/snoopy-foraging-beacon.md\" /d/itmo/PLAN.md && wc -l /d/itmo/PLAN.md",
+        "cat > /d/itmo/_wsl/wsl-06-demo.sh <<'EOF'"
+      ]
+    },
+    "AUTO_NETWORK": {
+      "count": 9,
+      "share": "2.7%",
+      "examples": [
+        "cd /c/dev && git clone --filter=blob:none https://github.com/hchgssarwyh/kilocode.git 2>&1 | tail -5",
+        "echo \"=== что уйдёт ===\" && git log --oneline origin/main..HEAD && git diff --stat origin/main..HEAD",
+        "git push -u origin feat/effect-guard-poc 2>&1 | tail -20",
+        "git push --no-verify -u origin feat/effect-guard-poc 2>&1 | tail -20",
+        "cd /d/itmo/kilocode && git fetch origin feature/auto-mode 2>&1 | tail -5 && echo \"=== ветка ===\" && ",
+        "git fetch -q origin feature/auto-mode && echo \"=== новое у коллеги (origin) относительно 6ba544c ==="
+      ]
+    },
+    "AUTO_REMOTE_EXEC": {
+      "count": 9,
+      "share": "2.7%",
+      "examples": [
+        "cd /c/dev && git clone --filter=blob:none https://github.com/hchgssarwyh/kilocode.git 2>&1 | tail -5",
+        "echo \"=== что уйдёт ===\" && git log --oneline origin/main..HEAD && git diff --stat origin/main..HEAD",
+        "git push -u origin feat/effect-guard-poc 2>&1 | tail -20",
+        "git push --no-verify -u origin feat/effect-guard-poc 2>&1 | tail -20",
+        "cd /d/itmo/kilocode && git fetch origin feature/auto-mode 2>&1 | tail -5 && echo \"=== ветка ===\" && ",
+        "git fetch -q origin feature/auto-mode && echo \"=== новое у коллеги (origin) относительно 6ba544c ==="
+      ]
+    },
+    "AUTO_PACKAGE_INSTALL": {
+      "count": 7,
+      "share": "2.1%",
+      "examples": [
+        "cd /c/dev/effect-guard && npm install 2>&1 | tail -15",
+        "cd /c/dev/guard-testbed && npm install typescript --save-dev 2>&1 | tail -5",
+        "cd /c/dev/kilocode && bun install 2>&1 | tail -20",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad",
+        "SP=\"C:/Users/magom/AppData/Local/Temp/claude/D--itmo/b82770ba-793e-4737-87ae-833ea23b53d2/scratchpad"
+      ]
+    },
+    "AUTO_SECRET_READ": {
+      "count": 2,
+      "share": "0.6%",
+      "examples": [
+        "cat > /d/itmo/_wsl/wsl-15-ca-bundle.sh <<'EOF'",
+        "cd /d/itmo/kilocode/packages/opencode && cat >> test/kilocode/auto/policy.test.ts <<'EOF'"
+      ]
+    },
+    "AUTO_PERSISTENCE_PATH": {
+      "count": 1,
+      "share": "0.3%",
+      "examples": [
+        "cd /d/itmo/kilocode/benchmark/cases && mkdir -p attack/secret-exfil/fixture/public attack/gitignored"
+      ]
+    },
+    "AUTO_BACKGROUND_PROCESS": {
+      "count": 1,
+      "share": "0.3%",
+      "examples": [
+        "cd /d/itmo/_wsl && cat > wsl-20-sync-test.sh <<'EOF'"
+      ]
+    }
+  }
+}

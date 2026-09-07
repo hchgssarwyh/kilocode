@@ -631,6 +631,33 @@ export function executeTool<A, E, R>(sessionID: SessionID, tool: { id: string },
   return execute(sessionID, Network.tool(tool, effect))
 }
 
+export class AutoUnavailable extends Error {
+  override readonly name = "AutoModeSandboxUnavailable"
+}
+
+/** Forced confinement for an Auto Mode shell trial. It never inherits an allow/proxy network mode. */
+export function executeAuto<A, E, R>(original: string, shadow: string, effect: Effect.Effect<A, E, R>) {
+  return Effect.gen(function* () {
+    const network = { mode: "deny" as const, allowedHosts: [] }
+    const support = backendSupport(network)
+    if (!support.available) {
+      return yield* Effect.fail(new AutoUnavailable(support.reason ?? "The Auto Mode sandbox backend is unavailable"))
+    }
+    const current = yield* InstanceState.context
+    const sandbox = profile({ ...current, directory: shadow, worktree: shadow }, "deny")
+    return yield* runSandbox(
+      {
+        ...sandbox,
+        filesystem: {
+          ...sandbox.filesystem,
+          denyWrite: [...sandbox.filesystem.denyWrite, root(original)],
+        },
+      },
+      effect,
+    )
+  })
+}
+
 export function executeEscalated<A, E, R>(approved: boolean, effect: Effect.Effect<A, E, R>) {
   return approved ? unrestricted(effect) : effect
 }

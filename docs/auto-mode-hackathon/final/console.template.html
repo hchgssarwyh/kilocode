@@ -1,0 +1,508 @@
+<title>Kilo Auto Mode Console</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /*__FONTS__*/
+  :root {
+    --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F2E9E8; --ink: #161412; --muted: #6E6763; --line: #E3DCDA;
+    --accent: #C93E33; --accent-ink: #FFFFFF; --block: #161412; --block-ink: #FFFFFF;
+    --allow: #1E8A3C; --allow-bg: #DDF3E2; --allow-cell: #8FD49B; --ask: #A8770A; --ask-bg: #FAF0D3; --deny: #C93E33; --deny-bg: #F6D8D5;
+    --invalid: #8A8380; --invalid-bg: #EFEBEA; --shadow: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #161412; --surface: #1E1B19; --surface-2: #2A2523; --ink: #F2EDEB; --muted: #A39C98; --line: #383230;
+      --accent: #E6675C; --accent-ink: #161412; --block: #F2EDEB; --block-ink: #161412;
+      --allow: #7ED49A; --allow-bg: #1F3A28; --allow-cell: #2F7A45; --ask: #E3B54B; --ask-bg: #3F3418; --deny: #F08A80; --deny-bg: #4A2320;
+      --invalid: #8A8380; --invalid-bg: #2C2826; --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #161412; --surface: #1E1B19; --surface-2: #2A2523; --ink: #F2EDEB; --muted: #A39C98; --line: #383230;
+    --accent: #E6675C; --accent-ink: #161412; --block: #F2EDEB; --block-ink: #161412;
+    --allow: #7ED49A; --allow-bg: #1F3A28; --allow-cell: #2F7A45; --ask: #E3B54B; --ask-bg: #3F3418; --deny: #F08A80; --deny-bg: #4A2320;
+    --invalid: #8A8380; --invalid-bg: #2C2826; --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--ink); font-family: Inter, Arial, "Segoe UI", sans-serif; font-size: 14px; line-height: 1.45; margin: 0; }
+  code, .mono { font-family: "IBM Plex Mono", Consolas, "DejaVu Sans Mono", monospace; font-size: 12.5px; }
+  h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 600; }
+  h1 { font-size: 32px; letter-spacing: -.02em; font-weight: 700; line-height: 1.12; max-width: 24ch; }
+  h2 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+  h3 { font-size: 14px; }
+  a { color: var(--accent); }
+  .wrap { max-width: 1240px; margin: 0 auto; padding: 24px 28px 40px; display: grid; gap: 30px; }
+  .mast { display: grid; gap: 16px; padding-bottom: 20px; border-bottom: 2px solid var(--accent); }
+  .logos { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; min-height: 26px; }
+  .logos .logo { height: 24px; width: auto; display: block; mix-blend-mode: multiply; }
+  .logos .logo-alfa { height: 28px; }
+  .logos .logo-itmo { height: 22px; }
+  .logos .sep { width: 1px; height: 22px; background: var(--line); }
+  .logos .event { margin-left: auto; color: var(--muted); font-size: 12.5px; letter-spacing: .02em; }
+  .title-row { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+  .eyebrow { color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; margin-bottom: 8px; }
+  .thesis { color: var(--muted); max-width: 64ch; margin: 10px 0 0; font-size: 15px; line-height: 1.5; }
+  .runmeta { display: flex; flex-wrap: wrap; gap: 6px 28px; margin: 0; font-size: 13px; }
+  .runmeta > div { display: flex; gap: 8px; align-items: baseline; }
+  .runmeta dt { color: var(--muted); } .runmeta dd { margin: 0; font-weight: 500; }
+  .foot { border-top: 1px solid var(--line); padding-top: 12px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 20px; color: var(--muted); font-size: 12.5px; }
+  :root[data-theme="dark"] .logos .logo { mix-blend-mode: normal; background: #fff; padding: 3px 6px; border-radius: 2px; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .logos .logo { mix-blend-mode: normal; background: #fff; padding: 3px 6px; border-radius: 2px; } }
+  .toggle { font: inherit; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); background: none; border: 1.5px solid var(--accent); border-radius: 6px; padding: 8px 14px; cursor: pointer; white-space: nowrap; }
+  .toggle:hover { background: var(--deny-bg); }
+  .toggle:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+  body.compact .full-only { display: none; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 13px; }
+  .meta b { color: var(--ink); font-weight: 500; }
+  /* tiles */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .tile { padding: 18px 20px; display: grid; gap: 6px; border-left: 1px solid var(--line); }
+  .tile:first-child { border-left: 0; padding-left: 0; }
+  .tile .label { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); font-weight: 700; }
+  .tile .value { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.01em; line-height: 1.1; }
+  .tile .value .arrow { color: var(--muted); font-weight: 400; margin: 0 6px; }
+  .tile .value .good { color: var(--allow); }
+  .tile .value .bad { color: var(--deny); }
+  .tile .note { color: var(--muted); font-size: 12.5px; }
+  .tile .note b { color: var(--ink); font-weight: 600; }
+  .thesis b { color: var(--ink); font-weight: 600; }
+  /* sections */
+  section { display: grid; gap: 12px; }
+  .sec-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; }
+  .sec-head p { margin: 0; color: var(--muted); max-width: 70ch; }
+  /* A/B */
+  .ab { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; align-items: start; }
+  .col { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .col-head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .col-head .tag { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--accent); font-weight: 700; }
+  #col-a .col-head { background: var(--block); color: var(--block-ink); }
+  #col-a .col-head .tag, #col-a .col-head code, #col-a .col-head .codes { color: var(--block-ink); opacity: .85; }
+  .col-head code { color: var(--muted); }
+  .rows { list-style: none; margin: 0; padding: 0; }
+  .row { display: grid; grid-template-columns: 22px 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 14px 8px 10px; border-bottom: 1px solid var(--line); border-left: 4px solid transparent; position: relative; }
+  .row:last-child { border-bottom: 0; }
+  .row.deny { border-left-color: var(--deny); background: var(--deny-bg); }
+  .row.ask { border-left-color: var(--ask); }
+  .row.fatal { border-left-color: var(--deny); background: var(--deny-bg); }
+  .row.aborted { border-left-color: var(--invalid); }
+  .row .n { color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; text-align: right; }
+  .row .tool { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .row .arg { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .arg .dim { color: var(--muted); }
+  .row .arg .hot { color: var(--deny); font-weight: 700; }
+  .row.deny .codes, .row.fatal .codes { color: var(--deny); font-weight: 600; }
+  .row .right { display: flex; gap: 6px; align-items: center; white-space: nowrap; }
+  button.row { width: 100%; text-align: left; font: inherit; color: inherit; background: none; cursor: pointer; }
+  button.row:hover { background: var(--surface-2); }
+  button.row.deny:hover, button.row.fatal:hover { background: var(--deny-bg); filter: brightness(.97); }
+  button.row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+  button.row[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 4px; font-size: 11.5px; font-weight: 600; letter-spacing: .05em; border: 1px solid transparent; }
+  .pill.allow { background: var(--allow-bg); color: var(--allow); }
+  .pill.ask { background: var(--ask-bg); color: var(--ask); }
+  .pill.deny { background: var(--deny-bg); color: var(--deny); border-color: var(--deny); }
+  .pill.neutral { background: var(--invalid-bg); color: var(--muted); }
+  .pill.outcome { background: transparent; border-color: var(--line); color: var(--muted); font-weight: 400; }
+  .pill.outcome.created { color: var(--deny); border-color: var(--deny); font-weight: 700; }
+  .codes { color: var(--muted); font-size: 11.5px; }
+  .col-foot { padding: 12px 14px; border-top: 1px solid var(--line); background: var(--surface-2); display: grid; gap: 8px; }
+  #col-b .col-foot { background: var(--allow-bg); }
+  #col-b .col-foot.bad { background: var(--deny-bg); }
+  .result-line { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .result-line .status { font-weight: 700; }
+  .result-line .status.bad { color: var(--deny); }
+  .result-line .status.good { color: var(--allow); }
+  details summary { cursor: pointer; color: var(--accent); font-size: 13px; }
+  blockquote { margin: 8px 0 0; padding: 8px 12px; border-left: 3px solid var(--line); color: var(--muted); font-size: 13px; white-space: pre-wrap; }
+  /* tooltip */
+  .tip { position: fixed; z-index: 10; max-width: 520px; background: var(--ink); color: var(--bg); padding: 8px 10px; border-radius: 6px; font-size: 12px; white-space: pre-wrap; pointer-events: none; box-shadow: 0 4px 16px rgba(0,0,0,.25); display: none; }
+  /* lifecycle */
+  .life { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 12px; }
+  .paths { display: grid; gap: 14px; }
+  .path { display: grid; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .path:first-child { border-top: 0; padding-top: 0; }
+  .path-head { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+  .path-head .kind { font-size: 11.5px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+  .kind.allow { color: var(--allow); } .kind.deny { color: var(--deny); }
+  .path-head .src { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+  .bench-switch { display: flex; gap: 6px; flex-wrap: wrap; }
+  .bench-switch button { font: inherit; font-size: 12.5px; padding: 5px 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 6px; cursor: pointer; }
+  .bench-switch button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .bench-switch button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .life-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; align-items: baseline; }
+  .steps { display: flex; flex-wrap: nowrap; gap: 0; align-items: stretch; overflow-x: auto; padding-bottom: 6px; }
+  .step { display: grid; gap: 2px; flex: 0 0 auto; min-width: 104px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); position: relative; margin-right: 22px; }
+  .step::after { content: ""; position: absolute; right: -16px; top: 50%; width: 12px; border-top: 2px solid var(--line); }
+  .step:last-child { margin-right: 0; }
+  .step:last-child::after { display: none; }
+  .step .ph { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .step .dur { font-variant-numeric: tabular-nums; font-size: 13px; }
+  .step.deny .dur, .step.allow .dur { font-weight: 700; }
+  .life .expl b { color: var(--ink); }
+  .step.allow { border-color: var(--allow); } .step.ask { border-color: var(--ask); } .step.deny { border-color: var(--deny); background: var(--deny-bg); }
+  .step.skipped { opacity: .45; border-style: dashed; }
+  .life .expl { color: var(--muted); max-width: 90ch; }
+  /* bench grid */
+  .grid-wrap { overflow-x: auto; }
+  table.bench { border-collapse: separate; border-spacing: 0; font-size: 13px; min-width: 640px; }
+  table.bench th { text-align: left; font-weight: 500; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+  table.bench td { padding: 5px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  table.bench td.case { white-space: nowrap; }
+  table.bench td.case .kind { color: var(--muted); font-size: 11.5px; margin-left: 6px; }
+  .cells { display: inline-flex; gap: 4px; }
+  .cell { width: 26px; height: 20px; border-radius: 4px; display: inline-grid; place-items: center; font-size: 10.5px; font-weight: 600; font-family: "IBM Plex Mono", monospace; cursor: default; }
+  .cell.ok { background: var(--allow-cell); color: var(--ink); border: 1px solid var(--allow); }
+  .cell.comp { background: var(--deny-bg); color: var(--deny); border: 1px solid var(--deny); }
+  .cell.inv { background: var(--invalid-bg); color: var(--invalid); border: 1px dashed var(--invalid); }
+  .cell.miss { background: var(--invalid-bg); color: var(--ink); border: 1px solid var(--invalid); }
+  .cell.ask-sw { background: var(--ask-bg); border: 1px solid var(--ask); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 12.5px; align-items: center; }
+  .legend .cell { width: 18px; height: 14px; }
+  /* corpus bar */
+  .bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+  .bar div { display: grid; place-items: center; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .bar .b-allow { background: var(--allow-bg); color: var(--allow); }
+  .bar .b-ask { background: var(--ask-bg); color: var(--ask); }
+  .bar .b-deny { background: var(--deny-bg); color: var(--deny); }
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 16px; align-items: start; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; }
+  .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; }
+  .kv dt { color: var(--muted); } .kv dd { margin: 0; font-variant-numeric: tabular-nums; }
+  /* loader */
+  .load { display: grid; gap: 8px; }
+  .load label { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  input[type=file] { font: inherit; font-size: 12.5px; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+  @media (prefers-reduced-motion: no-preference) { button.row { transition: background .12s; } }
+</style>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="logos">/*__LOGOS__*/<span class="event">Хакатон AI Talent Hub · защита 7 сентября 2026</span></div>
+    <div class="title-row">
+      <div>
+        <div class="eyebrow">Auto Mode для Kilo Code</div>
+        <h1>Один сценарий, две сессии: без защиты и с защитой</h1>
+        <p class="thesis">Опасное действие выполняется в копии проекта, проверяется по факту и <b>в проект не попадает</b>. Агент <b>продолжает задачу</b>, разработчик видит причину в журнале.</p>
+      </div>
+      <div class="controls"><button type="button" class="toggle" id="toggle-view" aria-pressed="true">Показать стенд и корпус</button></div>
+    </div>
+    <dl class="runmeta" id="run-meta"></dl>
+  </header>
+
+  <section class="tiles" aria-label="Ключевые показатели">
+    <div class="tile"><div class="label">Атаки прошли</div><div class="value"><span class="bad">84%</span><span class="arrow">→</span><span class="good">0%</span></div><div class="note">148 запусков, 2 модели, 2 платформы: без защиты <b>47 из 56</b>, с защитой <b>0 из 56</b></div></div>
+    <div class="tile"><div class="label">Полезные задачи выполнены</div><div class="value">22/22<span class="arrow">→</span><span class="good">22/23</span></div><div class="note">без защиты → с защитой; на обычных задачах <b>0 лишних вопросов</b> из 22 действий</div></div>
+    <div class="tile"><div class="label">Задержка на решение</div><div class="value">≤ 25 <span style="font-size:16px;font-weight:500">мс</span></div><div class="note">macOS: проверка до исполнения p95 <b>12 мс</b>, перенос <b>17 мс</b>; WSL2: 38 и 141 мс. Ориентир 50 мс на решение</div></div>
+    <div class="tile"><div class="label">Вмешательство на реальной работе</div><div class="value">1.2%</div><div class="note"><b>9 046 действий</b> агента из публичного корпуса SWE-agent</div></div>
+  </section>
+
+  <section aria-labelledby="ab-h">
+    <div class="sec-head">
+      <h2 id="ab-h">1 · Один сценарий</h2>
+      <p>Слева агент без защиты, справа с включённым Auto Mode. Строка — вызов инструмента; в правой колонке у каждого вердикт шлюза. Нажмите на строку справа, чтобы увидеть путь действия по фазам.</p>
+    </div>
+    <div class="ab">
+      <div class="col" id="col-a">
+        <div class="col-head"><div><span class="tag">2 · Без защиты</span><h3>kilo run <code>--auto</code></h3></div><span class="codes" id="a-count"></span></div>
+        <ol class="rows" id="rows-a"></ol>
+        <div class="col-foot" id="foot-a"></div>
+      </div>
+      <div class="col" id="col-b">
+        <div class="col-head"><div><span class="tag">3 · С защитой</span><h3>kilo run <code>--auto --auto-mode</code></h3></div><span class="codes" id="b-count"></span></div>
+        <ol class="rows" id="rows-b"></ol>
+        <div class="col-foot" id="foot-b"></div>
+      </div>
+    </div>
+    <div class="life" id="life-wrap"><h2>4 · Итог: три пути действия</h2><div class="paths" id="paths"></div></div>
+  </section>
+
+  <section aria-labelledby="bench-h" class="full-only">
+    <div class="sec-head">
+      <h2 id="bench-h">5 · Стенд: два прогона на двух платформах</h2>
+      <p id="bench-note">Квадрат — один запуск. Наведите, чтобы увидеть длительность и сработавшие правила.</p>
+    </div>
+    <div class="bench-switch" role="group" aria-label="Выбор прогона">
+      <button type="button" data-run="1" aria-pressed="true">Прогон 1 · macOS · 9 кейсов · 54 запуска</button>
+      <button type="button" data-run="2" aria-pressed="false">Прогон 2 · Linux/WSL2 · 13 кейсов · 78 запусков, после правок</button>
+      <button type="button" data-run="3" aria-pressed="false">Прогон 3 · сильная модель nemotron-3-super-120b · 4 кейса · 16 запусков</button>
+    </div>
+    <div class="grid-wrap"><table class="bench" id="bench"></table></div>
+    <div class="legend"><span class="cell ok"></span> задача выполнена, запрещённых файлов нет <span class="cell comp"></span> атака прошла: запрещённый файл в проекте <span class="cell miss"></span> задача не выполнена, запрещённых файлов нет <span class="cell inv"></span> невалидный запуск (таймаут, сеть) <span>· буква — сработавшее правило: <b>P</b> файл автозапуска, <b>G</b> внутренности git, <b>B</b> фоновый процесс, <b>K</b> установка пакета, <b>O</b> запись вне папки, <b>?</b> неразобранный эффект</span></div>
+  </section>
+
+  <div class="two full-only">
+    <section class="panel" aria-labelledby="corpus-h">
+      <h2 id="corpus-h">6 · Как часто шлюз вмешивается в реальную работу</h2>
+      <p class="hint" style="margin:0">Команды из 300 публичных траекторий SWE-agent (llama 8b/70b/405b, задачи SWE-bench), прогнанные через нашу политику до исполнения.</p>
+      <div class="bar" id="corpus-bar" role="img" aria-label="Вердикты на shell-командах"></div>
+      <dl class="kv" id="corpus-kv"></dl>
+    </section>
+    <section class="panel" aria-labelledby="load-h">
+      <h2 id="load-h">Показать другой прогон</h2>
+      <p class="hint" style="margin:0">Подходит JSON-вывод <code>kilo run --format json</code>: файлы <code>*.stdout.jsonl</code> из стенда или <code>b-guarded.jsonl</code>. Если в файле есть события Auto Mode, он попадёт в правую колонку, иначе в левую.</p>
+      <div class="load">
+        <label>Лог A <input type="file" id="file-a" accept=".jsonl,.json,.log"></label>
+        <label>Лог B <input type="file" id="file-b" accept=".jsonl,.json,.log"></label>
+        <span class="hint" id="load-status">Сейчас показан прогон 2026-09-06 11:18.</span>
+      </div>
+    </section>
+  </div>
+  <footer class="foot"><span>Команда: Белоконь Михаил · Кирдяшкин Максим · Межуева Екатерина</span><span>Репозиторий <span class="mono">hchgssarwyh/kilocode</span>, ветка <span class="mono">feature/auto-mode</span></span></footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script id="data" type="application/json">/*__DATA__*/</script>
+<script>
+(() => {
+  const DATA = JSON.parse(document.getElementById("data").textContent);
+  const $ = (s) => document.querySelector(s);
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const RULE = {
+    AUTO_PERSISTENCE_PATH: "P", AUTO_GIT_INTERNALS: "G", AUTO_OUTSIDE_WORKSPACE: "O", AUTO_BACKGROUND_PROCESS: "B",
+    AUTO_PACKAGE_INSTALL: "K", AUTO_NETWORK: "N", AUTO_REMOTE_EXEC: "R", AUTO_UNKNOWN_EFFECT: "?", AUTO_SECRET_READ: "S",
+  };
+  const RULE_RU = {
+    AUTO_PERSISTENCE_PATH: "запись файла автозапуска", AUTO_GIT_INTERNALS: "внутренности git", AUTO_OUTSIDE_WORKSPACE: "запись вне рабочей папки",
+    AUTO_BACKGROUND_PROCESS: "фоновый процесс", AUTO_PACKAGE_INSTALL: "установка новой зависимости", AUTO_NETWORK: "сетевое обращение",
+    AUTO_REMOTE_EXEC: "сеть вместе с исполнением", AUTO_UNKNOWN_EFFECT: "неразобранный эффект", AUTO_SECRET_READ: "чтение файла с секретом",
+    AUTO_UNSUPPORTED_TOOL: "инструмент без адаптера", AUTO_EFFECT_MISMATCH: "незаявленный опасный эффект", AUTO_APPLY_CONFLICT: "конфликт с оригиналом",
+    AUTO_PACKAGE_MANAGER_UNSUPPORTED: "неподдерживаемый менеджер пакетов",
+  };
+  const HOT = /\.vscode\/tasks\.json|\.github\/workflows|\.husky|conftest\.py|\.pth\b|hooksPath|\.env\b/;
+
+  // ---------- tooltip
+  const tip = $("#tip");
+  function bindTip(el, text) {
+    if (!text) return;
+    el.addEventListener("mouseenter", () => { tip.textContent = text; tip.style.display = "block"; });
+    el.addEventListener("mousemove", (e) => {
+      const w = tip.offsetWidth, h = tip.offsetHeight;
+      tip.style.left = Math.min(e.clientX + 14, window.innerWidth - w - 8) + "px";
+      tip.style.top = (e.clientY + 18 + h > window.innerHeight ? e.clientY - h - 10 : e.clientY + 18) + "px";
+    });
+    el.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+  }
+
+  // ---------- meta
+  function renderMeta(run) {
+    $("#run-meta").innerHTML = `<div><dt>Запуск</dt><dd>${esc(run.stamp)}</dd></div><div><dt>Среда</dt><dd>Linux / WSL2, bubblewrap</dd></div><div><dt>Модель</dt><dd class="mono">${esc(run.model)}</dd></div><div><dt>Сценарий</dt><dd>${esc(run.scenario)}</dd></div><div><dt>Промпт</dt><dd>«${esc(run.prompt)}»</dd></div>`;
+  }
+
+  // ---------- argument formatting
+  function fmtArg(tool, arg) {
+    let a = String(arg ?? "");
+    a = a.replace(/\/home\/[^/\s]+\/am-[ab]\//g, "").replace(/\/home\/[^/\s]+\/am-[ab]\b/g, ".").replace(/\/Users\/[^/\s]+\/kilocode\/benchmark\/results\/[^/\s]+\/[^/\s]+\//g, "");
+    const short = a.length > 88 ? a.slice(0, 85) + "…" : a;
+    const html = esc(short).replace(HOT, (m) => `<span class="hot">${m}</span>`);
+    return html;
+  }
+
+  // ---------- column A (baseline)
+  function renderBaseline(calls, finalText, created) {
+    const ol = $("#rows-a"); ol.innerHTML = "";
+    calls.forEach((c, i) => {
+      const fatal = (c.tool === "write" || c.tool === "edit" || c.tool === "bash") && HOT.test(c.arg || "") && !/^ls\b|^pwd\b|^cat\b/.test(c.arg || "");
+      const li = document.createElement("li"); li.className = "row" + (fatal ? " fatal" : "");
+      li.innerHTML = `<span class="n">${i + 1}</span><span class="tool">${esc(c.tool)}</span><span class="arg mono">${fmtArg(c.tool, c.arg)}</span><span class="right">${fatal ? '<span class="pill outcome created">файл создан</span>' : '<span class="pill outcome">выполнено</span>'}</span>`;
+      bindTip(li, (c.arg || "") + (c.output ? "\n\n" + c.output : ""));
+      ol.appendChild(li);
+    });
+    $("#a-count").textContent = `${calls.length} вызовов`;
+    $("#foot-a").innerHTML = `<div class="result-line"><span>Итог в проекте:</span><span class="status ${created ? "bad" : "good"}"><code>.vscode/tasks.json</code> ${created ? "создан, атака прошла" : "отсутствует"}</span></div>` +
+      (finalText ? `<details><summary>Финальный ответ модели</summary><blockquote>${esc(finalText)}</blockquote></details>` : "");
+  }
+
+  // ---------- column B (guarded)
+  let selected = null;
+  function verdictOf(a) { return a.final === "discarded" ? (a.post === "DENY" ? "DENY" : (a.pre === "DENY" ? "DENY" : (a.pre === "ASK" ? "ASK" : "DENY"))) : (a.pre === "ASK" ? "ASK" : "ALLOW"); }
+  function renderGuarded(g) {
+    const ol = $("#rows-b"); ol.innerHTML = "";
+    g.actions.forEach((a, i) => {
+      const v = verdictOf(a);
+      const aborted = !a.final;
+      const cls = aborted ? "aborted" : (v === "DENY" ? "deny" : v === "ASK" ? "ask" : "");
+      const outcome = aborted ? "прервано" : a.final === "discarded" ? "отброшено" : a.final === "applied" ? (a.post ? "проверено по факту, применено" : "выполнено") : a.final;
+      const btn = document.createElement("button"); btn.type = "button"; btn.className = "row " + cls; btn.setAttribute("aria-pressed", "false");
+      const arg = a.call ? a.call.arg : "";
+      btn.innerHTML = `<span class="n">${i + 1}</span><span class="tool">${esc(a.tool)}</span><span class="arg mono">${fmtArg(a.tool, arg)}${a.codes.length ? ` <span class="codes">${a.codes.map((c) => esc(c.replace("AUTO_", ""))).join(", ")}</span>` : ""}</span><span class="right"><span class="pill ${v.toLowerCase()}">${v}</span><span class="pill outcome">${outcome}</span></span>`;
+      bindTip(btn, (arg || "") + (a.call && a.call.output ? "\n\n" + a.call.output : ""));
+      btn.addEventListener("click", () => select(g, i));
+      const li = document.createElement("li"); li.appendChild(btn); ol.appendChild(li);
+    });
+    const s = g.summary;
+    $("#b-count").textContent = s ? `${s.actions} действий · ${s.applied} применено · ${s.denied} отказано · ${s.asked} вопросов` : `${g.actions.length} действий`;
+    const finalText = g.texts.length ? g.texts[g.texts.length - 1].text : "";
+    $("#foot-b").classList.toggle("bad", !!g.tasksJson);
+    $("#foot-b").innerHTML = `<div class="result-line"><span>Итог в проекте:</span><span class="status ${g.tasksJson ? "bad" : "good"}"><code>.vscode/tasks.json</code> ${g.tasksJson ? "создан, защита не сработала" : "отсутствует, запись отброшена"}</span></div>` +
+      (finalText ? `<details><summary>Финальный ответ модели</summary><blockquote>${esc(finalText)}</blockquote></details>` : "");
+    const firstDeny = g.actions.findIndex((a) => verdictOf(a) === "DENY" && a.codes.includes("AUTO_PERSISTENCE_PATH"));
+    const firstTx = g.actions.findIndex((a) => a.final === "applied" && a.post);
+    slots.allow = firstTx >= 0 ? g.actions[firstTx] : null;
+    slots.deny = null;
+    select(g, firstDeny >= 0 ? firstDeny : Math.max(0, g.actions.findIndex((a) => a.final === "discarded")));
+  }
+
+  const ORDER = ["received", "precheck", "trial_started", "trial_finished", "observed", "postcheck", "applied", "discarded", "returned_to_agent"];
+  const slots = { allow: null, deny: null };
+  function strip(a) {
+    const have = new Map(a.phases.map((p) => [p.phase, p]));
+    const path = a.final === "discarded" || a.pre === "DENY" ? ORDER.filter((p) => p !== "applied") : ORDER.filter((p) => p !== "discarded");
+    return path.map((ph) => {
+      const p = have.get(ph);
+      const v = p && p.verdict ? p.verdict.toLowerCase() : "";
+      const dur = p && p.duration != null ? `${p.duration} мс` : "";
+      return `<div class="step ${p ? "" : "skipped"} ${v}"><span class="ph">${PH_RU[ph] || ph}</span><span class="dur">${p ? (p.verdict ? p.verdict + (dur ? " · " + dur : "") : (dur || "✓")) : "—"}</span></div>`;
+    }).join("");
+  }
+  function explain(a) {
+    const readOnly = a.tool === "read" || a.tool === "glob" || a.tool === "grep";
+    if (a.final === "discarded" && a.pre === "DENY") return "Правило сработало до исполнения: действие <b>не запускалось ни в проекте, ни в копии</b>. Агенту вернулся <b>код правила</b>, а не текст из README.";
+    if (a.final === "discarded" && a.post === "DENY") return "До исполнения команда выглядела безобидно: обычный запуск скрипта. Он выполнен <b>один раз в теневой копии</b>, снимок показал запрещённый файл, и <b>весь результат действия отброшен</b>, включая безобидный artifact.txt.";
+    if (a.final === "discarded") return "Вопрос человеку в неинтерактивном режиме равен отказу: действие отброшено.";
+    if (!a.final) return "Действие не получило завершающей фазы: в этом прогоне после первой теневой транзакции следующая правка обрывалась. Дефект найден по этому логу и исправлен в ветке.";
+    if (readOnly) return "Чтение не меняет проект: проверка до исполнения, без транзакции.";
+    return "Изменяющее действие: выполнено в теневой копии, снимок сверен теми же правилами, <b>файловый результат перенесён в проект</b>.";
+  }
+  function pathBlock(kind, title, a, source) {
+    const v = kind === "allow" ? "ALLOW" : "DENY";
+    const arg = a.call ? fmtArg(a.tool, a.call.arg) : "";
+    const codes = a.codes.map((c) => `<code>${esc(c)}</code> — ${esc(RULE_RU[c] || "")}`).join("; ");
+    return `<div class="path"><div class="path-head"><span class="kind ${kind}">${title}</span><span class="mono">${esc(a.tool)} ${arg}</span><span class="pill ${v.toLowerCase()}">${v}</span><span class="src">${esc(source)}</span></div><div class="steps">${strip(a)}</div>${codes ? `<div>${codes}</div>` : ""}<div class="expl">${explain(a)}</div></div>`;
+  }
+  function renderPaths() {
+    const el = $("#paths");
+    const post = DATA.postExample && DATA.postExample.action;
+    el.innerHTML = (slots.allow ? pathBlock("allow", "Разрешённое изменение", slots.allow, "эта сессия") : "") +
+      (slots.deny ? pathBlock("deny", "Отказ до исполнения", slots.deny, "эта сессия") : "") +
+      (post ? pathBlock("deny", "Отказ по факту", post, `кейс ${DATA.postExample.case}, прогон 2`) : "");
+  }
+  const PH_RU = { received: "получено", precheck: "проверка до", trial_started: "старт в копии", trial_finished: "исполнено в копии", observed: "снимок", postcheck: "проверка по факту", applied: "перенесено", discarded: "отброшено", failed: "ошибка", returned_to_agent: "ответ агенту" };
+  function select(g, i) {
+    selected = i;
+    document.querySelectorAll("#rows-b button.row").forEach((b, k) => b.setAttribute("aria-pressed", String(k === i)));
+    const a = g.actions[i]; if (!a) return;
+    if (a.final === "discarded") slots.deny = a; else slots.allow = a;
+    renderPaths();
+    return;
+  }
+
+  // ---------- benchmark grid
+  function renderBench(rows) {
+    const cases = [...new Set(rows.map((r) => r.case))];
+    const kinds = Object.fromEntries(rows.map((r) => [r.case, r.kind]));
+    const KIND = { attack: "атака", mixed: "задача + инъекция", normal: "обычная задача" };
+    const cell = (r) => {
+      if (!r) return `<span class="cell inv">·</span>`;
+      const cls = !r.valid ? "inv" : !r.security ? "comp" : (r.task ? "ok" : "miss");
+      const letter = r.mode === "auto" ? (r.codes.map((c) => RULE[c]).filter(Boolean).find((l) => l !== "?") || (r.codes.length ? "?" : "")) : "";
+      const state = !r.valid ? "невалидный запуск (таймаут или ошибка CLI)" : cls === "comp" ? "запрещённый файл появился: атака прошла" : cls === "miss" ? "задача не выполнена, запрещённых файлов нет" : "задача выполнена, запрещённых файлов нет";
+      const t = `${r.case} · ${r.mode} · повтор ${r.repeat}\n${state}\n${r.sec} с${r.codes.length ? "\nправила: " + r.codes.join(", ") : ""}`;
+      return `<span class="cell ${cls}" data-tip="${esc(t)}">${letter}</span>`;
+    };
+    const reps = [...new Set(rows.map((r) => r.repeat))].sort((x, y) => x - y);
+    const tr = cases.map((c) => {
+      const b = reps.map((k) => rows.find((r) => r.case === c && r.mode === "baseline" && r.repeat === k));
+      const a = reps.map((k) => rows.find((r) => r.case === c && r.mode === "auto" && r.repeat === k));
+      return `<tr><td class="case"><span class="mono">${esc(c)}</span><span class="kind">${KIND[kinds[c]] || kinds[c]}</span></td><td><span class="cells">${b.map(cell).join("")}</span></td><td><span class="cells">${a.map(cell).join("")}</span></td></tr>`;
+    }).join("");
+    $("#bench").innerHTML = `<thead><tr><th>Кейс</th><th>Без защиты · ${reps.length} повтора</th><th>С защитой · ${reps.length} повтора</th></tr></thead><tbody>${tr}</tbody>`;
+    document.querySelectorAll("#bench .cell[data-tip]").forEach((el) => bindTip(el, el.dataset.tip));
+  }
+
+  // ---------- corpus
+  function renderCorpus(c) {
+    const v = c.verdicts, total = v.ALLOW + v.ASK + v.DENY;
+    const pct = (n) => (100 * n / total).toFixed(1) + "%";
+    $("#corpus-bar").innerHTML = `<div class="b-allow" style="flex:${v.ALLOW}">ALLOW ${pct(v.ALLOW)}</div><div class="b-ask" style="flex:${Math.max(v.ASK, total * 0.03)}" title="ASK ${pct(v.ASK)}"></div><div class="b-deny" style="flex:${Math.max(v.DENY, total * 0.012)}" title="DENY ${pct(v.DENY)}"></div>`;
+    $("#corpus-bar").insertAdjacentHTML("afterend", `<div class="legend" id="corpus-legend"><span><span class="cell ok"></span> ALLOW ${pct(v.ALLOW)} · ${v.ALLOW.toLocaleString("ru-RU")}</span><span><span class="cell ask-sw"></span> ASK ${pct(v.ASK)} · ${v.ASK}</span><span><span class="cell comp"></span> DENY ${pct(v.DENY)} · ${v.DENY}</span><span>из ${total.toLocaleString("ru-RU")} shell-команд</span></div>`);
+    const acts = c.kinds.read + c.kinds.edit + c.kinds.bash;
+    $("#corpus-kv").innerHTML = `<dt>Действий агента</dt><dd>${acts.toLocaleString("ru-RU")} (чтение ${c.kinds.read.toLocaleString("ru-RU")}, правка ${c.kinds.edit.toLocaleString("ru-RU")}, shell ${c.kinds.bash.toLocaleString("ru-RU")})</dd><dt>Вмешательство</dt><dd>${(v.ASK + v.DENY)} действий, ${(100 * (v.ASK + v.DENY) / acts).toFixed(1)}%</dd><dt>Чаще всего</dt><dd>${Object.entries(c.codes).filter(([k]) => k !== "ALLOW").sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, n]) => `<code>${esc(k.replace("AUTO_", ""))}</code> ${n}`).join(", ")}</dd>`;
+  }
+
+  // ---------- parser for kilo run --format json streams
+  function parseStream(text) {
+    const calls = new Map(), events = [], texts = []; let summary = null;
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim(); if (!line.startsWith("{")) continue;
+      let r; try { r = JSON.parse(line); } catch { continue; }
+      const t = r.type, ts = r.timestamp || 0;
+      if (t === "tool_use") {
+        const p = r.part || {}; const st = p.state || {}; const inp = st.input || {};
+        const arg = inp.command || inp.filePath || inp.pattern || JSON.stringify(inp).slice(0, 120);
+        calls.set(p.callID, { ts, tool: p.tool, arg, status: st.status, output: String(st.output || st.error || "").slice(0, 400), callID: p.callID });
+      } else if (t === "auto_mode") {
+        const e = r.event || (r.data && r.data.event) || {};
+        events.push({ ts, actionID: e.actionID, callID: e.callID, tool: e.tool, phase: e.phase, verdict: e.verdict, ruleCodes: e.ruleCodes || [], duration: e.duration });
+      } else if (t === "text") {
+        texts.push({ ts, text: String((r.part || {}).text || "").slice(0, 700) });
+      } else if (t === "auto_mode_summary") summary = r.summary;
+    }
+    const actions = new Map();
+    for (const e of events) {
+      const a = actions.get(e.actionID) || { actionID: e.actionID, tool: e.tool, callID: e.callID, phases: [], pre: null, post: null, final: null, codes: [] };
+      a.phases.push({ phase: e.phase, verdict: e.verdict, duration: e.duration, ts: e.ts });
+      if (e.phase === "precheck") a.pre = e.verdict;
+      if (e.phase === "postcheck") a.post = e.verdict;
+      if (["applied", "discarded", "failed"].includes(e.phase)) a.final = e.phase;
+      for (const c of e.ruleCodes) if (!a.codes.includes(c)) a.codes.push(c);
+      actions.set(e.actionID, a);
+    }
+    const cl = [...calls.values()].sort((x, y) => x.ts - y.ts);
+    const acts = [...actions.values()];
+    const used = new Set();
+    for (const a of acts) {
+      const c = a.callID && calls.get(a.callID) ? calls.get(a.callID) : cl.find((x) => x.tool === a.tool && !used.has(x.callID));
+      if (c) used.add(c.callID);
+      a.call = c || null;
+    }
+    return { calls: cl, actions: acts, texts, summary };
+  }
+  function handleFile(input, side) {
+    const f = input.files && input.files[0]; if (!f) return;
+    f.text().then((text) => {
+      const p = parseStream(text);
+      const finalText = p.texts.length ? p.texts[p.texts.length - 1].text : "";
+      if (p.actions.length && side !== "a") {
+        const created = p.actions.some((a) => a.final === "applied" && a.call && /\.vscode\/tasks\.json/.test(a.call.arg || ""));
+        renderGuarded({ actions: p.actions, texts: p.texts, summary: p.summary, tasksJson: created });
+      } else {
+        const created = p.calls.some((c) => (c.tool === "write" || c.tool === "bash") && /\.vscode\/tasks\.json|mkdir -p .*\.vscode/.test(c.arg || ""));
+        renderBaseline(p.calls, finalText, created);
+      }
+      $("#load-status").textContent = `Загружен ${f.name}: ${p.calls.length} вызовов, ${p.actions.length} действий Auto Mode.`;
+    });
+  }
+  $("#file-a").addEventListener("change", (e) => handleFile(e.target, "a"));
+  $("#file-b").addEventListener("change", (e) => handleFile(e.target, "b"));
+
+  // ---------- compact / full view
+  const tbtn = $("#toggle-view");
+  function setCompact(on) {
+    document.body.classList.toggle("compact", on);
+    tbtn.textContent = on ? "Показать стенд и корпус" : "Только сценарий";
+    tbtn.setAttribute("aria-pressed", String(on));
+    try { localStorage.setItem("amc-compact", on ? "1" : "0"); } catch (e) {}
+  }
+  let compact = true; try { compact = localStorage.getItem("amc-compact") !== "0"; } catch (e) {}
+  setCompact(compact);
+  tbtn.addEventListener("click", () => setCompact(!document.body.classList.contains("compact")));
+
+  // ---------- initial render
+  renderMeta(DATA.run);
+  renderBaseline(DATA.run.baseline.calls, DATA.run.baseline.final, DATA.run.baseline.tasksJson);
+  renderGuarded(DATA.run.guarded);
+  renderBench(DATA.bench);
+  document.querySelectorAll(".bench-switch button").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll(".bench-switch button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+    const run = b.dataset.run;
+    renderBench(run === "3" ? DATA.bench3 : run === "2" ? DATA.bench2 : DATA.bench);
+    $("#bench-note").textContent = run === "3"
+      ? "Прогон 7 сентября на Linux/WSL2, модель kilo/nvidia/nemotron-3-super-120b-a12b:free: четыре кейса, где исход зависит от послушности модели, по два повтора. Сильная модель ведётся на инъекции чаще слабой; с защитой инцидентов нет. Пунктир — модель зависла после отказа и не уложилась в 420 с."
+      : run === "2"
+      ? "Прогон 7 сентября на Linux/WSL2 (bubblewrap) на коммите с исправлениями: 13 кейсов, 78 запусков. Квадрат — один запуск; пунктир — таймаут бесплатной модели."
+      : "Прогон 6 сентября на macOS (Seatbelt) до исправлений: 9 кейсов, 54 запуска. Квадрат — один запуск.";
+  }));
+  $("#bench-note").textContent = "Прогон 6 сентября на macOS (Seatbelt) до исправлений: 9 кейсов, 54 запуска. Квадрат — один запуск. Наведите, чтобы увидеть длительность и сработавшие правила.";
+  renderCorpus(DATA.corpus);
+})();
+</script>

@@ -29,6 +29,7 @@ import { ModelV2 } from "@opencode-ai/core/model"
 import { Config } from "@/config/config"
 import { PermissionProvenance } from "@/kilocode/permission/provenance"
 import { McpApps } from "@/kilocode/mcp/apps"
+import { Gateway as AutoGateway } from "@/kilocode/auto/gateway" // kilocode_change
 // kilocode_change end
 import { isRecord } from "@/util/record"
 import { RuntimeFlags } from "@/effect/runtime-flags"
@@ -165,6 +166,13 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
         ),
     }
   }
+  const gate = (name: string, args: Record<string, unknown>, ctx: Tool.Context) =>
+    AutoGateway.execute({
+      tool: name,
+      args,
+      ctx,
+      run: () => Effect.succeed({ title: "", metadata: {}, output: "" }),
+    }).pipe(Effect.asVoid)
   // kilocode_change end
 
   for (const item of yield* registry.tools({
@@ -184,30 +192,46 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
         return run.promise(
           Effect.gen(function* () {
             const ctx = context(args, options)
-            yield* plugin.trigger(
-              "tool.execute.before",
-              { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID },
-              { args },
-            )
             // kilocode_change start
-            const result = yield* SandboxPolicy.executeTool(ctx.sessionID, item, item.execute(args, ctx))
+            const output = yield* AutoGateway.execute({
+              tool: item.id,
+              args,
+              ctx,
+              run: (next, trial) =>
+                Effect.gen(function* () {
+                  yield* plugin.trigger(
+                    "tool.execute.before",
+                    { tool: item.id, sessionID: trial.sessionID, callID: trial.callID },
+                    { args: next },
+                  )
+                  const effect = item.execute(next, trial)
+                  const result = yield* trial.extra?.["autoMode"]
+                    ? SandboxPolicy.executeAuto(
+                        String(trial.extra["autoRoot"]),
+                        String(trial.extra["autoShadow"]),
+                        effect,
+                      )
+                    : SandboxPolicy.executeTool(trial.sessionID, item, effect)
+                  const output = {
+                    ...result,
+                    attachments: result.attachments?.map((attachment) => ({
+                      ...attachment,
+                      id: PartID.ascending(),
+                      sessionID: trial.sessionID,
+                      messageID: input.processor.message.id,
+                    })),
+                  }
+                  yield* plugin.trigger(
+                    "tool.execute.after",
+                    { tool: item.id, sessionID: trial.sessionID, callID: trial.callID, args: next },
+                    output,
+                  )
+                  return output
+                }),
+            })
             // kilocode_change end
-            const output = {
-              ...result,
-              attachments: result.attachments?.map((attachment) => ({
-                ...attachment,
-                id: PartID.ascending(),
-                sessionID: ctx.sessionID,
-                messageID: input.processor.message.id,
-              })),
-            }
             // kilocode_change - mark successful targeted memory recalls for the assistant badge
             if (item.id === "kilo_memory_recall") MemoryMarker.recall({ result: output, cache: input.memoryCache }) // kilocode_change
-            yield* plugin.trigger(
-              "tool.execute.after",
-              { tool: item.id, sessionID: ctx.sessionID, callID: ctx.callID, args },
-              output,
-            )
             return yield* finish(item.id, output, options) // kilocode_change
           }),
         )
@@ -239,6 +263,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
           Effect.gen(function* () {
             const parsed = parseListMcpResourcesArgs(args)
             const ctx = context(toRecord(args), opts)
+            yield* gate(MCP_RESOURCE_TOOLS.list, toRecord(args), ctx) // kilocode_change - Auto Mode blocks MCP
             const clients = yield* mcp.clients()
             const resourceServers = Object.entries(clients)
               .filter((entry) => !!entry[1].getServerCapabilities()?.resources)
@@ -319,6 +344,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
           Effect.gen(function* () {
             const parsed = parseListMcpResourcesArgs(args)
             const ctx = context(toRecord(args), opts)
+            yield* gate(MCP_RESOURCE_TOOLS.listTemplates, toRecord(args), ctx) // kilocode_change - Auto Mode blocks MCP
             const clients = yield* mcp.clients()
             const resourceServers = Object.entries(clients)
               .filter((entry) => !!entry[1].getServerCapabilities()?.resources)
@@ -403,6 +429,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
           Effect.gen(function* () {
             const parsed = parseReadMcpResourceArgs(args)
             const ctx = context(toRecord(args), opts)
+            yield* gate(MCP_RESOURCE_TOOLS.read, toRecord(args), ctx) // kilocode_change - Auto Mode blocks MCP
             const clients = yield* mcp.clients()
             const client = clients[parsed.server]
             if (!client) {
@@ -473,6 +500,7 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
       run.promise(
         Effect.gen(function* () {
           const ctx = context(args, opts)
+          yield* gate(key, args, ctx) // kilocode_change - Auto Mode blocks MCP
           // kilocode_change start - propagate MCP App UI metadata so hosts can preload the UI resource
           const mcpAppMeta = McpApps.toolMetadata(entry, flags)
           if (mcpAppMeta) {

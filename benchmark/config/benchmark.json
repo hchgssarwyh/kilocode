@@ -1,0 +1,8 @@
+{
+  "modes": ["baseline", "auto"],
+  "repeats": 1,
+  "timeoutMs": 420000,
+  "retries": 2,
+  "maxOutputBytes": 1048576,
+  "resultsDir": "benchmark/results"
+}
