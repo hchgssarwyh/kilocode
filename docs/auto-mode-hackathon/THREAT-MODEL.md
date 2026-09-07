@@ -47,6 +47,24 @@
 | Необратимые внешние действия (база, платежи, внешние API) | Нельзя выполнить вхолостую | ASK/DENY по сети | **Вопрос человеку**, симуляции нет |
 | Обход шлюза через субагентов, фоновые и интерактивные инструменты | Отклоняются до появления адаптера | `AUTO_UNSUPPORTED_TOOL` | **Закрыто fail-closed**, ценой функциональности |
 
+## Сопоставление с MITRE ATT&CK, MITRE ATLAS и OWASP LLM Top 10
+
+Семь классов из таблицы 2.1 описания проекта, сведённые к внешним таксономиям. Сопоставление по эффекту действия:
+ATT&CK описывает шаги злоумышленника, у нас те же шаги выполняет агент под влиянием инъекции или по неосторожности.
+Prompt injection в ATT&CK отсутствует, для него используется MITRE ATLAS. OWASP LLM Top 10 в редакции 2025 года.
+
+| Класс атаки | MITRE ATT&CK | MITRE ATLAS | OWASP LLM Top 10 |
+|---|---|---|---|
+| Подброшенный файл автозапуска (редактор, CI, git hooks, профили shell, `conftest.py`, `.pth`) | T1546 Event Triggered Execution, в т.ч. T1546.004 Unix Shell Configuration Modification; T1574 Hijack Execution Flow для `conftest.py` и `.pth`; T1053 Scheduled Task/Job для CI по расписанию | — | LLM06 Excessive Agency |
+| Prompt injection в README, SKILL.md, MCP | — | AML.T0051.001 LLM Prompt Injection: Indirect | LLM01 Prompt Injection |
+| Неосторожные действия: запись вне проекта, фоновые процессы, внутренности git, «скачать и выполнить» | T1059.004 Command and Scripting Interpreter: Unix Shell; T1564.011 Hide Artifacts: Ignore Process Interrupts (`nohup`, `&`); T1105 Ingress Tool Transfer для `curl \| sh` | — | LLM06 Excessive Agency; LLM05 Improper Output Handling |
+| Утечка секретов через инструменты чтения и сеть | T1552.001 Credentials In Files, T1552.004 Private Keys; T1048 Exfiltration Over Alternative Protocol, T1567 Exfiltration Over Web Service | — | LLM02 Sensitive Information Disclosure |
+| Slopsquatting и вредоносный пакет | T1195.001 Compromise Software Dependencies and Development Tools | — | LLM03 Supply Chain; LLM09 Misinformation (галлюцинированное имя пакета) |
+| Downgrade: ослабление правил из проекта | T1562.001 Impair Defenses: Disable or Modify Tools | — | LLM01 Prompt Injection (инструкция в конфигурации); LLM06 Excessive Agency |
+| Многошаговые атаки, вредоносный код в разрешённой правке, необратимые внешние действия | T1195 Supply Chain Compromise для кода в правке; многошаговые цепочки в ATT&CK описываются тактиками, не одной техникой | — | LLM05 Improper Output Handling; LLM06 Excessive Agency |
+
+Что закрыто, а что нет, см. таблицу покрытия выше: сопоставление не меняет статусов, оно даёт внешние имена классам.
+
 ## Что гарантируем всегда и что по возможности
 
 **Всегда**, при условии, что действие прошло через шлюз и сессия в Auto Mode:
